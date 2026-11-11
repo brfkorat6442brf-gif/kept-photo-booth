@@ -1,0 +1,21 @@
+# Cloudflare Pages Custom Headers
+
+/*
+  Access-Control-Allow-Origin: *
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# Ensure Service Worker is never cached stale
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Static Assets
+/*.js
+  Cache-Control: public, max-age=86400
+/*.css
+  Cache-Control: public, max-age=86400
+/*.png
+  Cache-Control: public, max-age=604800
+/*.ico
+  Cache-Control: public, max-age=604800

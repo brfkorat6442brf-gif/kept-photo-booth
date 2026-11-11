@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+*.dmg
+*.app
+*.app/
+dmg_staging/
+test_dmg_folder/
+
+# Python
+__pycache__/
+*.pyc
+
+# Local certificates & orders
+*.pem
+saved_orders/
+
+# Flutter / Native project heavy folders
+android/
+ios/
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Node
+node_modules/
+.wrangler/
