@@ -287,6 +287,18 @@ export default {
       return jsonResponse({ image: null, active: false, timestamp: Date.now() });
     }
 
+    // ================= iOS MOBILECONFIG MIME TYPE =================
+    if (pathname === '/Kept_PhotoBooth.mobileconfig') {
+      const assetRes = await env.ASSETS.fetch(request);
+      if (assetRes.ok) {
+        const headers = new Headers(assetRes.headers);
+        headers.set('Content-Type', 'application/x-apple-aspen-config');
+        headers.set('Content-Disposition', 'attachment; filename="Kept_PhotoBooth.mobileconfig"');
+        return new Response(assetRes.body, { status: assetRes.status, headers });
+      }
+      return assetRes;
+    }
+
     // ================= STATIC ASSETS FALLBACK =================
     try {
       return await env.ASSETS.fetch(request);
