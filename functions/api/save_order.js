@@ -33,6 +33,27 @@ export async function onRequestPost(context) {
     // 1. Save to Cloudflare D1 SQL Database if bound
     if (env.DB) {
       try {
+        // Auto-ensure orders table exists on first request
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id TEXT NOT NULL UNIQUE,
+            date_folder TEXT NOT NULL,
+            frame_name TEXT,
+            frame_layout TEXT,
+            timestamp TEXT,
+            note TEXT,
+            print_jpg TEXT,
+            animated_gif TEXT,
+            download_url TEXT,
+            gdrive_daily_folder TEXT,
+            gdrive_folder_id TEXT DEFAULT '1giOkC-Y37veBgt4AshEYiatunVuzEtw2',
+            shots_json TEXT,
+            shots_count INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `).run();
+
         await env.DB.prepare(`
           INSERT INTO orders (
             order_id, date_folder, frame_name, frame_layout,
