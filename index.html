@@ -2792,7 +2792,7 @@
       const receiptDriveText = document.getElementById('receipt-drive-folder-text');
       if (receiptDriveText) receiptDriveText.innerText = `DRIVE: 1giOkC-Y37veBgt4AshEYiatunVuzEtw2 / ${dateFolder}`;
 
-      // 4. Save to localStorage for instant client retrieval
+      // 4. Save to localStorage for instant client retrieval (safe against iOS 5MB QuotaExceededError)
       currentOrderData = {
         orderId: orderId,
         dateFolder: dateFolder,
@@ -2807,8 +2807,16 @@
         animatedGif: animatedGifUrl,
         shots: realCapturedPhotos
       };
-      localStorage.setItem('last_kept_order_' + orderId, JSON.stringify(currentOrderData));
-      localStorage.setItem('last_kept_order', JSON.stringify(currentOrderData));
+      try {
+        localStorage.setItem('last_kept_order_' + orderId, JSON.stringify(currentOrderData));
+        localStorage.setItem('last_kept_order', JSON.stringify(currentOrderData));
+      } catch (storageErr) {
+        console.warn('localStorage quota exceeded, skipping local full-res cache:', storageErr);
+        try {
+          const liteOrder = { ...currentOrderData, shots: [] };
+          localStorage.setItem('last_kept_order', JSON.stringify(liteOrder));
+        } catch (_) {}
+      }
 
       // 5. Send to Server & Export to Google Drive (with timeout safety)
       const driveBadge = document.getElementById('final-drive-sync-badge');

@@ -300,37 +300,61 @@ export default {
         let kvSaved = false;
         let d1Error = null;
 
-        // 1. Save to Cloudflare D1 SQL Database
+        // 1. Save to Cloudflare D1 SQL Database (with automatic size fallback if shots_json exceeds D1 row limit)
         if (env.DB) {
+          const upsertSql = `
+            INSERT INTO orders (
+              order_id, date_folder, frame_name, frame_layout,
+              timestamp, note, print_jpg, animated_gif,
+              download_url, gdrive_daily_folder, gdrive_folder_id,
+              shots_json, shots_count, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(order_id) DO UPDATE SET
+              date_folder = excluded.date_folder,
+              frame_name = excluded.frame_name,
+              frame_layout = excluded.frame_layout,
+              timestamp = excluded.timestamp,
+              note = excluded.note,
+              print_jpg = excluded.print_jpg,
+              animated_gif = excluded.animated_gif,
+              download_url = excluded.download_url,
+              gdrive_daily_folder = excluded.gdrive_daily_folder,
+              gdrive_folder_id = excluded.gdrive_folder_id,
+              shots_json = excluded.shots_json,
+              shots_count = excluded.shots_count
+          `;
           try {
             await ensureD1Tables(env.DB);
-            await env.DB.prepare(`
-              INSERT INTO orders (
-                order_id, date_folder, frame_name, frame_layout,
-                timestamp, note, print_jpg, animated_gif,
-                download_url, gdrive_daily_folder, gdrive_folder_id,
-                shots_json, shots_count, created_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-              ON CONFLICT(order_id) DO UPDATE SET
-                date_folder = excluded.date_folder,
-                frame_name = excluded.frame_name,
-                frame_layout = excluded.frame_layout,
-                timestamp = excluded.timestamp,
-                note = excluded.note,
-                print_jpg = excluded.print_jpg,
-                animated_gif = excluded.animated_gif,
-                download_url = excluded.download_url,
-                gdrive_daily_folder = excluded.gdrive_daily_folder,
-                gdrive_folder_id = excluded.gdrive_folder_id,
-                shots_json = excluded.shots_json,
-                shots_count = excluded.shots_count
-            `).bind(
-              orderId, dateFolder, frameName, frameLayout,
-              timestamp, note, printJpg, animatedGif,
-              downloadUrl, gdriveDailyFolder, gdriveFolderId,
-              shotsJson, shotsCount
-            ).run();
-            d1Saved = true;
+            try {
+              await env.DB.prepare(upsertSql).bind(
+                orderId, dateFolder, frameName, frameLayout,
+                timestamp, note, printJpg, animatedGif,
+                downloadUrl, gdriveDailyFolder, gdriveFolderId,
+                shotsJson, shotsCount
+              ).run();
+              d1Saved = true;
+            } catch (fullErr) {
+              // Retry without raw shots_json if payload exceeds D1 statement/row limit
+              try {
+                await env.DB.prepare(upsertSql).bind(
+                  orderId, dateFolder, frameName, frameLayout,
+                  timestamp, note, printJpg, animatedGif,
+                  downloadUrl, gdriveDailyFolder, gdriveFolderId,
+                  '[]', shotsCount
+                ).run();
+                d1Saved = true;
+              } catch (liteErr) {
+                // Final fallback: keep printJpg only
+                await env.DB.prepare(upsertSql).bind(
+                  orderId, dateFolder, frameName, frameLayout,
+                  timestamp, note, printJpg, '',
+                  downloadUrl, gdriveDailyFolder, gdriveFolderId,
+                  '[]', shotsCount
+                ).run();
+                d1Saved = true;
+                d1Error = liteErr.message;
+              }
+            }
           } catch (err) {
             d1Error = err.message;
           }
@@ -447,6 +471,49 @@ export default {
         orderId,
         message: 'Order not found in Cloudflare Database.',
       }, 404);
+    }
+
+    // ================= API ROUTE 2B: GET /api/download_file =================
+    if (pathname === '/api/download_file' && request.method === 'GET') {
+      const orderId = url.searchParams.get('order');
+      const fileType = (url.searchParams.get('type') || 'jpg').toLowerCase();
+      const inlineView = url.searchParams.get('view') === '1';
+
+      if (!orderId) {
+        return new Response('Missing order parameter', { status: 400 });
+      }
+
+      if (env.DB) {
+        try {
+          const col = fileType === 'gif' ? 'animated_gif' : 'print_jpg';
+          const row = await env.DB.prepare(`SELECT ${col} as data_url FROM orders WHERE order_id = ? LIMIT 1`)
+            .bind(orderId)
+            .first();
+
+          const dataUrl = row && row.data_url ? row.data_url : '';
+          if (dataUrl) {
+            const defaultMime = fileType === 'gif' ? 'image/gif' : 'image/jpeg';
+            const decoded = decodeDataUrlBytes(dataUrl, defaultMime);
+            if (decoded) {
+              const ext = fileType === 'gif' ? 'gif' : 'jpg';
+              const disp = inlineView ? 'inline' : `attachment; filename="Kept_${orderId}_Framed.${ext}"`;
+              return new Response(decoded.bytes, {
+                status: 200,
+                headers: {
+                  ...CORS_HEADERS,
+                  'Content-Type': decoded.mimeType || defaultMime,
+                  'Content-Disposition': disp,
+                  'Cache-Control': 'public, max-age=86400',
+                },
+              });
+            }
+          }
+        } catch (err) {
+          return new Response('Error reading file: ' + err.message, { status: 500 });
+        }
+      }
+
+      return new Response('File not found', { status: 404 });
     }
 
     // ================= API ROUTE 3: GET /api/frames =================

@@ -132,33 +132,53 @@
     const orderId = params.get('order') || 'KP-BKK-DEMO';
     document.getElementById('order-display').innerText = 'ORDER: #' + orderId;
 
-    async function loadOrderFiles() {
+    async function loadOrderFiles(attempt = 1) {
       try {
         const res = await fetch(`/api/get_order?order=${encodeURIComponent(orderId)}`);
         if (res.ok) {
           const data = await res.json();
-          renderOrderData(data);
+          renderOrderData(data, true);
+          return;
+        }
+        // Retry briefly in case the booth is still finishing upload to Cloudflare
+        if (res.status === 404 && attempt < 4) {
+          setTimeout(() => loadOrderFiles(attempt + 1), 2000);
           return;
         }
       } catch (e) {
         console.log('Fetching order note:', e);
       }
 
-      // Check localStorage fallback
+      // Check localStorage fallback (same-device preview)
       const cached = localStorage.getItem('last_kept_order_' + orderId) || localStorage.getItem('last_kept_order');
       if (cached) {
         try {
           const data = JSON.parse(cached);
-          renderOrderData(data);
-          return;
+          if (!data.orderId || data.orderId === orderId) {
+            renderOrderData(data, false);
+            return;
+          }
         } catch (err) {}
       }
 
-      // Fallback demo mock
       renderDemoFallback();
     }
 
-    function renderOrderData(data) {
+    function dataUrlToBlobUrl(dataUrl) {
+      try {
+        if (!dataUrl || !dataUrl.startsWith('data:')) return dataUrl;
+        const parts = dataUrl.split(',');
+        const mime = parts[0].match(/:(.*?);/)[1];
+        const bin = atob(parts[1]);
+        const arr = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        return URL.createObjectURL(new Blob([arr], { type: mime }));
+      } catch (e) {
+        return dataUrl;
+      }
+    }
+
+    function renderOrderData(data, fromServer = false) {
       if (data.dateFolder) {
         const dailyEl = document.getElementById('gdrive-daily-folder-text');
         if (dailyEl) dailyEl.innerText = data.dateFolder;
@@ -186,7 +206,7 @@
         gifImg.src = gifUrl;
         gifImg.classList.remove('hidden');
         gifPlaceholder.classList.add('hidden');
-        gifBtn.href = gifUrl;
+        gifBtn.href = fromServer ? `/api/download_file?order=${encodeURIComponent(orderId)}&type=gif` : dataUrlToBlobUrl(gifUrl);
         gifBtn.download = `Kept_${orderId}_Framed.gif`;
       }
 
@@ -200,7 +220,7 @@
         jpgImg.src = jpgUrl;
         jpgImg.classList.remove('hidden');
         jpgPlaceholder.classList.add('hidden');
-        jpgBtn.href = jpgUrl;
+        jpgBtn.href = fromServer ? `/api/download_file?order=${encodeURIComponent(orderId)}&type=jpg` : dataUrlToBlobUrl(jpgUrl);
         jpgBtn.download = `Kept_${orderId}_Framed.jpg`;
       }
     }
@@ -208,15 +228,17 @@
     function renderDemoFallback() {
       const gifPlaceholder = document.getElementById('gif-loading-placeholder');
       gifPlaceholder.innerHTML = `
-        <span class="text-2xl block mb-1">🎞️</span>
-        <span class="text-xs text-emerald-400 font-bold block">ไฟล์ .GIF ได้รับการบันทึกแล้ว</span>
-        <span class="text-[10px] text-slate-500 block">สามารถกดดาวน์โหลดหรือดูใน Google Drive ได้ทันที</span>
+        <span class="text-2xl block mb-1">⏳</span>
+        <span class="text-xs text-amber-300 font-bold block">ยังไม่มีไฟล์ภาพสำหรับออเดอร์ #${orderId}</span>
+        <span class="text-[10px] text-slate-400 block mb-2">หากเพิ่งถ่ายเสร็จ รอ 3 วินาทีแล้วกดโหลดใหม่</span>
+        <button onclick="location.reload()" class="px-3 py-1 bg-slate-800 border border-slate-600 rounded-lg text-[10px] text-white font-bold">🔄 รีเฟรชหน้า</button>
       `;
       const jpgPlaceholder = document.getElementById('jpg-loading-placeholder');
       jpgPlaceholder.innerHTML = `
-        <span class="text-2xl block mb-1">📸</span>
-        <span class="text-xs text-emerald-400 font-bold block">ไฟล์ .JPG ได้รับการบันทึกแล้ว</span>
-        <span class="text-[10px] text-slate-500 block">300 DPI Thermal Print Quality</span>
+        <span class="text-2xl block mb-1">⏳</span>
+        <span class="text-xs text-amber-300 font-bold block">ยังไม่มีไฟล์ภาพสำหรับออเดอร์ #${orderId}</span>
+        <span class="text-[10px] text-slate-400 block mb-2">หากเพิ่งถ่ายเสร็จ รอ 3 วินาทีแล้วกดโหลดใหม่</span>
+        <button onclick="location.reload()" class="px-3 py-1 bg-slate-800 border border-slate-600 rounded-lg text-[10px] text-white font-bold">🔄 รีเฟรชหน้า</button>
       `;
     }
 
