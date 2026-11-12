@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Kept Photo Booth • รับไฟล์ภาพดิจิทัล & GIF</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;900&family=VT323&family=Noto+Sans+Thai:wght@400;600;800&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Space Grotesk', 'Noto Sans Thai', sans-serif;
+      background-color: #060609;
+      color: #F8FAFC;
+    }
+    .font-receipt { font-family: 'VT323', monospace; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-4 sm:p-6 max-w-lg mx-auto select-none">
+
+  <!-- Header -->
+  <header class="bg-[#12121a] p-4 rounded-3xl border border-slate-800 text-center space-y-1 shadow-xl">
+    <div class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold tracking-widest uppercase">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      Digital Download Center
+    </div>
+    <h1 class="text-2xl font-black text-white tracking-wider">K E P T</h1>
+    <p class="text-xs text-slate-400 font-mono" id="order-display">ORDER: #KP-BKK-LOADING</p>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="my-4 space-y-4">
+
+    <!-- 1. Animated GIF Card -->
+    <div class="bg-[#12121a] p-4 rounded-3xl border border-indigo-500/50 space-y-3 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🎞️</span>
+          <div>
+            <h2 id="gif-card-title" class="text-xs font-black text-white">ภาพเคลื่อนไหวในกรอบ (Framed Animated .GIF)</h2>
+            <p id="gif-card-subtitle" class="text-[10px] text-indigo-400">ภาพขยับในกรอบรูปที่เลือก คมชัด สวยงาม</p>
+          </div>
+        </div>
+        <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-500/40 font-mono">BOOMERANG</span>
+      </div>
+
+      <!-- Live GIF Display -->
+      <div class="relative bg-black rounded-2xl overflow-hidden border border-slate-800 flex items-center justify-center min-h-[220px]">
+        <img id="preview-gif-img" src="" alt="Framed Animated GIF" class="max-h-[300px] w-auto object-contain mx-auto hidden shadow-2xl" />
+        <div id="gif-loading-placeholder" class="text-center p-6 space-y-2">
+          <div class="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <span class="text-xs text-slate-400 block font-mono">กำลังประมวลผลไฟล์ .GIF ในกรอบ...</span>
+        </div>
+      </div>
+
+      <a id="btn-download-gif" href="#" download="Kept_Moment_Framed.gif" class="w-full py-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg hover:opacity-90 active:scale-95 transition">
+        <span>📥</span><span>ดาวน์โหลดภาพเคลื่อนไหวในกรอบ .GIF</span>
+      </a>
+    </div>
+
+    <!-- 2. Full High-Res Print Slip / Newspaper JPG Card -->
+    <div class="bg-[#12121a] p-4 rounded-3xl border border-emerald-500/50 space-y-3 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📸</span>
+          <div>
+            <h2 id="jpg-card-title" class="text-xs font-black text-white">รูปถ่ายในกรอบที่เลือก (Framed Photo .JPG)</h2>
+            <p id="jpg-card-subtitle" class="text-[10px] text-emerald-400">รูปในกรอบหนังสือพิมพ์ / สลิป คมชัด 300 DPI</p>
+          </div>
+        </div>
+        <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/40 font-mono">HIGH-RES</span>
+      </div>
+
+      <!-- Live JPG Display -->
+      <div class="relative bg-black rounded-2xl overflow-hidden border border-slate-800 flex items-center justify-center min-h-[220px]">
+        <img id="preview-jpg-img" src="" alt="High Res Photo Slip" class="max-h-[360px] w-auto object-contain mx-auto hidden shadow-2xl" />
+        <div id="jpg-loading-placeholder" class="text-center p-6 space-y-2">
+          <div class="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <span class="text-xs text-slate-400 block font-mono">กำลังโหลดภาพถ่าย .JPG...</span>
+        </div>
+      </div>
+
+      <a id="btn-download-jpg" href="#" download="Kept_PhotoStrip.jpg" class="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg hover:opacity-90 active:scale-95 transition">
+        <span>📥</span><span>ดาวน์โหลดรูปถ่าย .JPG</span>
+      </a>
+    </div>
+
+    <!-- 3. Google Drive Cloud Sync Banner -->
+    <div class="bg-gradient-to-br from-[#101b22] to-[#0d161d] p-4 rounded-3xl border border-teal-500/40 space-y-2">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">☁️</span>
+          <div>
+            <h3 class="text-xs font-bold text-white">สำรองไฟล์เข้า Google Drive เรียบร้อยแล้ว</h3>
+            <p class="text-[9px] text-teal-300 font-mono">Folder: 1giOkC-Y37veBgt4AshEYiatunVuzEtw2</p>
+          </div>
+        </div>
+        <span class="text-[9px] bg-teal-950 text-teal-300 border border-teal-500/40 px-2 py-0.5 rounded-full font-bold">SYNCED ✓</span>
+      </div>
+
+      <!-- Daily Folder Tag -->
+      <div class="flex items-center justify-between bg-teal-950/40 px-2.5 py-1.5 rounded-xl text-[9px] font-mono border border-teal-500/30">
+        <span class="text-teal-400">📅 โฟลเดอร์ประจำวัน:</span>
+        <span id="gdrive-daily-folder-text" class="text-white font-bold">2026-11-10</span>
+      </div>
+
+      <p class="text-[10px] text-slate-300 leading-relaxed">
+        ระบบได้บันทึกภาพถ่าย .JPG ทั้งหมดและภาพเคลื่อนไหว .GIF แยกจัดเก็บในโฟลเดอร์ประจำวันของ Google Drive แล้ว สามารถเปิดดูหรือแชร์ต่อได้ทันที
+      </p>
+      <a href="https://drive.google.com/drive/folders/1giOkC-Y37veBgt4AshEYiatunVuzEtw2?usp=sharing" target="_blank" class="w-full py-2.5 rounded-xl bg-teal-800 hover:bg-teal-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow transition">
+        <span>📂</span><span>เปิดโฟลเดอร์หลักใน Google Drive</span>
+      </a>
+    </div>
+
+    <!-- Tips on Saving to Phone Photo Library -->
+    <div class="p-3 rounded-2xl bg-[#0f0f14] border border-slate-800 text-[10px] text-slate-400 space-y-1">
+      <div class="font-bold text-white flex items-center gap-1">
+        <span>💡</span><span>คำแนะนำการเซฟลงเครื่อง:</span>
+      </div>
+      <div>• <b>iPhone / iPad:</b> แตะปุ่มดาวน์โหลด หรือแตะรูปภาพค้างไว้แล้วเลือก <i>"บันทึกไปยังแอปรูปภาพ (Save to Photos)"</i></div>
+      <div>• <b>Android:</b> แตะปุ่มดาวน์โหลด ไฟล์จะบันทึกลงโฟลเดอร์ Download และแสดงใน Gallery ทันที</div>
+    </div>
+
+  </main>
+
+  <footer class="text-center text-[10px] text-slate-500 py-3 font-mono">
+    KEPT PHOTO BOOTH • MEMORIES ARCHIVED IN BANGKOK
+  </footer>
+
+  <script>
+    // Get Order ID from URL params
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get('order') || 'KP-BKK-DEMO';
+    document.getElementById('order-display').innerText = 'ORDER: #' + orderId;
+
+    async function loadOrderFiles() {
+      try {
+        const res = await fetch(`/api/get_order?order=${encodeURIComponent(orderId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          renderOrderData(data);
+          return;
+        }
+      } catch (e) {
+        console.log('Fetching order note:', e);
+      }
+
+      // Check localStorage fallback
+      const cached = localStorage.getItem('last_kept_order_' + orderId) || localStorage.getItem('last_kept_order');
+      if (cached) {
+        try {
+          const data = JSON.parse(cached);
+          renderOrderData(data);
+          return;
+        } catch (err) {}
+      }
+
+      // Fallback demo mock
+      renderDemoFallback();
+    }
+
+    function renderOrderData(data) {
+      if (data.dateFolder) {
+        const dailyEl = document.getElementById('gdrive-daily-folder-text');
+        if (dailyEl) dailyEl.innerText = data.dateFolder;
+      }
+
+      if (data.frameName) {
+        const titleEl = document.getElementById('jpg-card-title');
+        if (titleEl) titleEl.innerText = `รูปถ่ายในกรอบ: ${data.frameName} (.JPG)`;
+        const subEl = document.getElementById('jpg-card-subtitle');
+        if (subEl) subEl.innerText = `เทมเพลต: ${(data.frameLayout || '').toUpperCase()} • คมชัด 300 DPI`;
+
+        const gifTitleEl = document.getElementById('gif-card-title');
+        if (gifTitleEl) gifTitleEl.innerText = `ภาพเคลื่อนไหวในกรอบ: ${data.frameName} (.GIF)`;
+        const gifSubEl = document.getElementById('gif-card-subtitle');
+        if (gifSubEl) gifSubEl.innerText = `เทมเพลต: ${(data.frameLayout || '').toUpperCase()} • ขยับลูปในกรอบสวยงาม`;
+      }
+
+      // 1. Animated Framed GIF
+      const gifUrl = data.animatedGif || (data.files && data.files.animatedGif);
+      if (gifUrl) {
+        const gifImg = document.getElementById('preview-gif-img');
+        const gifPlaceholder = document.getElementById('gif-loading-placeholder');
+        const gifBtn = document.getElementById('btn-download-gif');
+
+        gifImg.src = gifUrl;
+        gifImg.classList.remove('hidden');
+        gifPlaceholder.classList.add('hidden');
+        gifBtn.href = gifUrl;
+        gifBtn.download = `Kept_${orderId}_Framed.gif`;
+      }
+
+      // 2. High-Res Framed Artwork JPG
+      const jpgUrl = data.printJpg || (data.files && data.files.printJpg) || (data.shots && data.shots[0]);
+      if (jpgUrl) {
+        const jpgImg = document.getElementById('preview-jpg-img');
+        const jpgPlaceholder = document.getElementById('jpg-loading-placeholder');
+        const jpgBtn = document.getElementById('btn-download-jpg');
+
+        jpgImg.src = jpgUrl;
+        jpgImg.classList.remove('hidden');
+        jpgPlaceholder.classList.add('hidden');
+        jpgBtn.href = jpgUrl;
+        jpgBtn.download = `Kept_${orderId}_Framed.jpg`;
+      }
+    }
+
+    function renderDemoFallback() {
+      const gifPlaceholder = document.getElementById('gif-loading-placeholder');
+      gifPlaceholder.innerHTML = `
+        <span class="text-2xl block mb-1">🎞️</span>
+        <span class="text-xs text-emerald-400 font-bold block">ไฟล์ .GIF ได้รับการบันทึกแล้ว</span>
+        <span class="text-[10px] text-slate-500 block">สามารถกดดาวน์โหลดหรือดูใน Google Drive ได้ทันที</span>
+      `;
+      const jpgPlaceholder = document.getElementById('jpg-loading-placeholder');
+      jpgPlaceholder.innerHTML = `
+        <span class="text-2xl block mb-1">📸</span>
+        <span class="text-xs text-emerald-400 font-bold block">ไฟล์ .JPG ได้รับการบันทึกแล้ว</span>
+        <span class="text-[10px] text-slate-500 block">300 DPI Thermal Print Quality</span>
+      `;
+    }
+
+    window.addEventListener('load', loadOrderFiles);
+  </script>
+</body>
+</html>

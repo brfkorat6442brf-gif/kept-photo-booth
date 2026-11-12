@@ -1,18 +1,28 @@
 # ==============================================================================
-# Cloudflare Pages / Workers Configuration for Kept Photo Booth
+# Cloudflare Workers + Static Assets Configuration for Kept Photo Booth
+# Compatible with `npx wrangler deploy` (Cloudflare Workers Builds)
 # ==============================================================================
 
 name = "kept-photo-booth"
-compatibility_date = "2024-01-01"
-pages_build_output_dir = "."
+main = "worker.js"
+compatibility_date = "2024-11-01"
 
-# Cloudflare D1 Database Binding
-[[d1_databases]]
-binding = "DB"
-database_name = "kept_photobooth_db"
-database_id = "KEPT_D1_DATABASE_ID" # Run: npx wrangler d1 create kept_photobooth_db
+# Static Frontend Files (index.html, download.html, qrcode, gif_encoder)
+[assets]
+directory = "./public"
+binding = "ASSETS"
 
-# Cloudflare KV Storage Binding (Optional Edge Cache)
-[[kv_namespaces]]
-binding = "BOOTH_KV"
-id = "KEPT_KV_NAMESPACE_ID"
+# ==============================================================================
+# Cloudflare D1 Database Binding (เปิดใช้งานเมื่อสร้าง D1 Database แล้ว)
+# 1. ไปที่ Cloudflare Dashboard > Storage & Databases > D1 SQL Database
+# 2. สร้าง Database ชื่อ kept_photobooth_db แล้วคัดลอก Database ID
+# 3. เอาเครื่องหมาย # ออกแล้วใส่ Database ID จริงของคุณด้านล่าง
+# ==============================================================================
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "kept_photobooth_db"
+# database_id = "ใส่-DATABASE-ID-ของคุณที่นี่"
+
+# [[kv_namespaces]]
+# binding = "BOOTH_KV"
+# id = "ใส่-KV-ID-ของคุณที่นี่"
