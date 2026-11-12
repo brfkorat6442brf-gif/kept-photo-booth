@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ติดตั้งแอป Kept Photo Booth บน iPad & Tablet</title>
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #060609;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+  <div class="max-w-md w-full bg-[#11111a] border border-emerald-500/30 rounded-3xl p-6 space-y-5 shadow-2xl">
+    <div class="text-center space-y-2">
+      <img src="./apple-touch-icon.png" alt="Kept Booth Icon" class="w-20 h-20 rounded-2xl mx-auto shadow-lg border border-emerald-400/40" />
+      <h1 class="text-xl font-black text-white">Kept Photo Booth</h1>
+      <p class="text-xs text-emerald-400 font-medium">ติดตั้งเป็นแอปเต็มหน้าจอ (Standalone Kiosk Mode)</p>
+    </div>
+
+    <div id="browser-warning" class="hidden bg-amber-950/60 border border-amber-500/50 rounded-2xl p-3 text-xs text-amber-200">
+      ⚠️ <b>สำคัญ:</b> บน iPad / iPhone กรุณาเปิดหน้านี้ด้วยแอป <b>Safari</b> เท่านั้น (ห้ามเปิดใน Line หรือ Chrome) เพื่อให้ติดตั้งโปรไฟล์และเพิ่มลงหน้าจอโฮมได้ครับ
+    </div>
+
+    <!-- Option 1: Profile Install -->
+    <div class="bg-[#0a0a10] border border-slate-800 rounded-2xl p-4 space-y-3">
+      <h2 class="text-sm font-bold text-white flex items-center gap-2">
+        <span>🍎</span><span>วิธีที่ 1: ติดตั้งโปรไฟล์แอป (iPad / iPhone)</span>
+      </h2>
+      <a href="/Kept_PhotoBooth.mobileconfig" class="block w-full py-3.5 px-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-center text-sm rounded-xl shadow-lg active:scale-95 transition">
+        📥 ดาวน์โหลดโปรไฟล์ติดตั้งแอป (.mobileconfig)
+      </a>
+      <ol class="text-[11px] text-slate-300 space-y-1.5 list-decimal list-inside leading-relaxed">
+        <li>กดปุ่มสีเขียวด้านบน แล้วแตะ <b>อนุญาต (Allow)</b></li>
+        <li>เปิดแอป <b>การตั้งค่า (Settings)</b> บน iPad</li>
+        <li>ไปที่ <b>ดาวน์โหลดโปรไฟล์แล้ว (Profile Downloaded)</b> หรือ <i>ทั่วไป > การจัดการ VPN และอุปกรณ์</i></li>
+        <li>กด <b>ติดตั้ง (Install)</b> มุมขวาบน ไอคอนแอปจะเด้งไปหน้าโฮมทันที</li>
+      </ol>
+    </div>
+
+    <!-- Option 2: Add to Home Screen -->
+    <div class="bg-[#0a0a10] border border-slate-800 rounded-2xl p-4 space-y-2">
+      <h2 class="text-sm font-bold text-white flex items-center gap-2">
+        <span>⚡</span><span>วิธีที่ 2: เพิ่มผ่าน Safari โดยตรง (5 วินาที)</span>
+      </h2>
+      <p class="text-[11px] text-slate-300 leading-relaxed">
+        เปิดหน้า <a href="/" class="text-emerald-400 underline font-bold">Kept Photo Booth</a> ใน Safari > แตะปุ่ม <b>แชร์ (Share)</b> > เลือก <b>"เพิ่มไปยังหน้าจอโฮม" (Add to Home Screen)</b>
+      </p>
+    </div>
+
+    <a href="/" class="block w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-center text-xs rounded-xl transition">
+      📸 เข้าสู่หน้าตู้ถ่ายรูปทันที
+    </a>
+  </div>
+
+  <script>
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isSafari = /^((?!chrome|android|crios|fxios|line).)*safari/i.test(ua);
+    if (isIOS && !isSafari) {
+      document.getElementById('browser-warning').classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>

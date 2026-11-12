@@ -288,13 +288,19 @@ export default {
     }
 
     // ================= iOS MOBILECONFIG MIME TYPE =================
-    if (pathname === '/Kept_PhotoBooth.mobileconfig') {
-      const assetRes = await env.ASSETS.fetch(request);
+    if (pathname === '/Kept_PhotoBooth.mobileconfig' || pathname === '/api/install_profile') {
+      const assetUrl = new URL('/Kept_PhotoBooth.mobileconfig', request.url);
+      const assetRes = await env.ASSETS.fetch(new Request(assetUrl));
       if (assetRes.ok) {
-        const headers = new Headers(assetRes.headers);
-        headers.set('Content-Type', 'application/x-apple-aspen-config');
-        headers.set('Content-Disposition', 'attachment; filename="Kept_PhotoBooth.mobileconfig"');
-        return new Response(assetRes.body, { status: assetRes.status, headers });
+        const body = await assetRes.arrayBuffer();
+        return new Response(body, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/x-apple-aspen-config',
+            'Content-Disposition': 'attachment; filename="Kept_PhotoBooth.mobileconfig"',
+            'Cache-Control': 'no-store, must-revalidate',
+          },
+        });
       }
       return assetRes;
     }
