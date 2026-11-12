@@ -12,17 +12,8 @@ compatibility_date = "2024-11-01"
 directory = "./public"
 binding = "ASSETS"
 
-# ==============================================================================
-# Cloudflare D1 Database Binding (เปิดใช้งานเมื่อสร้าง D1 Database แล้ว)
-# 1. ไปที่ Cloudflare Dashboard > Storage & Databases > D1 SQL Database
-# 2. สร้าง Database ชื่อ kept_photobooth_db แล้วคัดลอก Database ID
-# 3. เอาเครื่องหมาย # ออกแล้วใส่ Database ID จริงของคุณด้านล่าง
-# ==============================================================================
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "kept_photobooth_db"
-# database_id = "ใส่-DATABASE-ID-ของคุณที่นี่"
-
-# [[kv_namespaces]]
-# binding = "BOOTH_KV"
-# id = "ใส่-KV-ID-ของคุณที่นี่"
+# Cloudflare D1 SQL Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "kept_photobooth_db"
+database_id = "51ad5752-04ac-4f8d-803a-2a4d48ee7853"

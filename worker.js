@@ -20,6 +20,43 @@ function jsonResponse(payload, status = 200) {
   });
 }
 
+async function ensureD1Tables(db) {
+  if (!db) return;
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id TEXT NOT NULL UNIQUE,
+      date_folder TEXT NOT NULL,
+      frame_name TEXT,
+      frame_layout TEXT,
+      timestamp TEXT,
+      note TEXT,
+      print_jpg TEXT,
+      animated_gif TEXT,
+      download_url TEXT,
+      gdrive_daily_folder TEXT,
+      gdrive_folder_id TEXT DEFAULT '1giOkC-Y37veBgt4AshEYiatunVuzEtw2',
+      shots_json TEXT,
+      shots_count INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS frames (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      mode TEXT NOT NULL,
+      layout TEXT NOT NULL,
+      title TEXT,
+      color TEXT,
+      image_url TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -56,27 +93,7 @@ export default {
         // 1. Save to Cloudflare D1 SQL Database
         if (env.DB) {
           try {
-            // Auto-ensure table exists just in case schema.sql wasn't executed yet
-            await env.DB.prepare(`
-              CREATE TABLE IF NOT EXISTS orders (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                order_id TEXT NOT NULL UNIQUE,
-                date_folder TEXT NOT NULL,
-                frame_name TEXT,
-                frame_layout TEXT,
-                timestamp TEXT,
-                note TEXT,
-                print_jpg TEXT,
-                animated_gif TEXT,
-                download_url TEXT,
-                gdrive_daily_folder TEXT,
-                gdrive_folder_id TEXT DEFAULT '1giOkC-Y37veBgt4AshEYiatunVuzEtw2',
-                shots_json TEXT,
-                shots_count INTEGER DEFAULT 0,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-              )
-            `).run();
-
+            await ensureD1Tables(env.DB);
             await env.DB.prepare(`
               INSERT INTO orders (
                 order_id, date_folder, frame_name, frame_layout,
@@ -219,6 +236,7 @@ export default {
 
       if (env.DB) {
         try {
+          await ensureD1Tables(env.DB);
           const { results } = await env.DB.prepare(
             'SELECT id, name, mode, layout, title, color, image_url as imageUrl FROM frames WHERE is_active = 1 ORDER BY id ASC'
           ).all();
@@ -235,8 +253,9 @@ export default {
     if (pathname === '/api/sync_stats' && request.method === 'GET') {
       const status = {
         status: 'online',
-        platform: 'Cloudflare Pages & D1',
+        platform: 'Cloudflare Workers + Static Assets & D1',
         d1_database_connected: false,
+        d1_database_id: '51ad5752-04ac-4f8d-803a-2a4d48ee7853',
         total_orders: 0,
         today_orders: 0,
         latest_order: null,
@@ -245,6 +264,7 @@ export default {
 
       if (env.DB) {
         try {
+          await ensureD1Tables(env.DB);
           const today = new Date().toISOString().slice(0, 10);
           const totalRow = await env.DB.prepare('SELECT COUNT(*) as count FROM orders').first();
           const todayRow = await env.DB.prepare('SELECT COUNT(*) as count FROM orders WHERE date_folder = ?').bind(today).first();
