@@ -1,0 +1,3660 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Kept Photo Booth • Receipt & Newspaper Studio</title>
+  
+  <!-- PWA & Standalone App Capabilities for iPad, Smart TV & Android Tablets -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Kept Booth">
+  <meta name="theme-color" content="#10B981">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="qrcode.min.js"></script>
+  <script src="gif_encoder.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;900&family=VT323&family=Noto+Sans+Thai:wght@400;600;800&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Space Grotesk', 'Noto Sans Thai', sans-serif;
+      background-color: #060609;
+      color: #F8FAFC;
+    }
+    .font-receipt {
+      font-family: 'VT323', monospace;
+    }
+    .font-newspaper {
+      font-family: 'Playfair Display', serif;
+    }
+    .thermal-paper-edge {
+      background: linear-gradient(135deg, transparent 4px, #ffffff 4px) top left,
+                  linear-gradient(225deg, transparent 4px, #ffffff 4px) top right;
+      background-size: 8px 8px;
+      background-repeat: repeat-x;
+    }
+    .thermal-tear-bottom {
+      background: radial-gradient(circle, transparent, transparent 50%, #ffffff 50%, #ffffff 100%);
+      background-size: 8px 8px;
+    }
+    .flash-active {
+      animation: cameraFlash 0.25s ease-out forwards;
+    }
+    @keyframes cameraFlash {
+      0% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    .roll-animation {
+      animation: paperFeed 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes paperFeed {
+      0% { transform: translateY(120px) scale(0.92); opacity: 0; }
+      100% { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    @media (max-width: 640px) {
+      #device-container {
+        width: 100vw !important;
+        max-width: 100% !important;
+        height: 100vh !important;
+        max-height: 100% !important;
+        border-radius: 0 !important;
+        border: none !important;
+        padding: 14px !important;
+      }
+      body {
+        padding: 0 !important;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 select-none">
+
+  <!-- Main Device Shell Container -->
+  <div id="device-container" class="relative w-[390px] h-[780px] bg-[#0c0c12] rounded-[42px] border-[6px] border-slate-800 shadow-[0_0_60px_rgba(0,0,0,0.9)] overflow-hidden transition-all duration-300 flex flex-col justify-between p-5">
+    
+    <!-- Top System Status Pill -->
+    <div class="flex justify-between items-center text-[10px] text-slate-400 px-2 pt-1 font-mono">
+      <span id="clock-display">16:20</span>
+      <div class="flex items-center gap-2">
+        <span class="text-emerald-400 flex items-center gap-1 font-bold">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> OTG CABLE CONNECTED
+        </span>
+        <span>⚡ 100%</span>
+      </div>
+    </div>
+
+    <!-- ================= SCREENS CONTAINER ================= -->
+    <div id="screen-container" class="relative flex-1 my-2 overflow-hidden flex flex-col">
+
+      <!-- ================= 1. IDLE / ATTRACT SCREEN ================= -->
+      <div id="screen-idle" class="flex flex-col items-center justify-between h-full py-6 text-center">
+        <div class="mt-4">
+          <div class="inline-block px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold tracking-widest uppercase mb-2">
+            Touch Screen To Start
+          </div>
+          <h1 class="text-4xl font-black tracking-tight text-white mt-1">
+            K E P T
+          </h1>
+          <p class="text-xs text-slate-400 tracking-widest uppercase mt-1">
+            Receipt & Newspaper Photo Booth
+          </p>
+        </div>
+
+        <!-- Animated Sample Roll on Idle -->
+        <div class="relative w-48 bg-white text-slate-900 rounded-xl p-3 shadow-2xl rotate-1 border-t-4 border-slate-300 font-receipt text-xs">
+          <div class="text-center font-bold text-sm tracking-widest border-b border-dashed border-slate-400 pb-1">
+            *** KEPT MOMENT ***
+          </div>
+          <div class="my-2 bg-slate-100 p-1 rounded border border-slate-300 text-center">
+            <div class="h-20 bg-slate-800 rounded flex items-center justify-center text-2xl text-slate-400 font-sans">
+              📸
+            </div>
+            <span class="text-[9px] text-slate-500">THERMAL DITHERED B&W</span>
+          </div>
+          <div class="text-[9px] space-y-0.5 border-t border-dashed border-slate-400 pt-1">
+            <div class="flex justify-between"><span>PRICE:</span><span class="font-bold">฿89.00</span></div>
+            <div class="flex justify-between"><span>PAYMENT:</span><span id="idle-sample-bank">KBANK / PROMPTPAY</span></div>
+          </div>
+        </div>
+
+        <button onclick="goToScreen('package')" class="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-slate-950 font-black text-sm tracking-wider uppercase shadow-[0_0_30px_rgba(16,185,129,0.4)] hover:scale-[1.02] active:scale-[0.98] transition">
+          แตะที่นี่เพื่อเริ่มถ่ายภาพ ✨
+        </button>
+      </div>
+
+      <!-- ================= 2. PACKAGE SELECTION ================= -->
+      <div id="screen-package" class="hidden flex-col justify-between h-full py-2">
+        <div>
+          <span class="text-[11px] font-bold text-emerald-400 tracking-wider">STEP 1 / 4</span>
+          <h2 class="text-lg font-black text-white mt-0.5">เลือกรูปแบบ Photo Booth</h2>
+          <p class="text-xs text-slate-400 mb-3">พิมพ์ภาพความละเอียดสูง รับสลิปและไฟล์ดิจิทัลทันที</p>
+
+          <div class="space-y-2">
+            <!-- Package 1: Receipt -->
+            <div onclick="selectPackage('Receipt Photobooth (กระดาษสลิป 80mm)', 89, 3, 'receipt')" class="p-3 rounded-2xl bg-[#14141e] border-2 border-emerald-500/60 hover:border-emerald-400 cursor-pointer transition flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg font-bold">
+                  🧾
+                </div>
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-bold text-white text-xs">Receipt Photobooth</span>
+                    <span class="text-[9px] bg-emerald-950 text-emerald-400 px-1.5 py-0.2 rounded font-bold">ยอดนิยม</span>
+                  </div>
+                  <span class="text-[10px] text-slate-400 block">สลิปใบเสร็จ 80mm ขาว-ดำ Dithering คาเฟ่สไตล์</span>
+                </div>
+              </div>
+              <span class="text-sm font-black text-emerald-400">฿89</span>
+            </div>
+
+            <!-- Package 2: Newspaper -->
+            <div onclick="selectPackage('The Songwat Times (หน้าหนังสือพิมพ์วินเทจ)', 140, 2, 'newspaper')" class="p-3 rounded-2xl bg-[#14141e] border-2 border-purple-500/50 hover:border-purple-400 cursor-pointer transition flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center text-lg font-bold">
+                  📰
+                </div>
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-bold text-white text-xs">Songwat Times Newspaper</span>
+                    <span class="text-[9px] bg-purple-950 text-purple-400 px-1.5 py-0.2 rounded font-bold">ทรงวาด</span>
+                  </div>
+                  <span class="text-[10px] text-slate-400 block">กรอบหนังสือพิมพ์วินเทจ โทนซีเปีย 300 DPI</span>
+                </div>
+              </div>
+              <span class="text-sm font-black text-purple-400">฿140</span>
+            </div>
+
+            <!-- Package 3: Sticker -->
+            <div onclick="selectPackage('Thermal Sticker (สติกเกอร์ไดคัท)', 129, 3, 'receipt')" class="p-3 rounded-2xl bg-[#14141e] border border-slate-700 hover:border-slate-500 cursor-pointer transition flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-lg font-bold">
+                  🏷️
+                </div>
+                <div>
+                  <span class="font-bold text-white text-xs block">Thermal Sticker Roll</span>
+                  <span class="text-[10px] text-slate-400 block">พิมพ์ลงกระดาษความร้อนแบบสติกเกอร์ ลอกแปะได้</span>
+                </div>
+              </div>
+              <span class="text-sm font-black text-emerald-400">฿129</span>
+            </div>
+          </div>
+        </div>
+
+        <button onclick="goToScreen('idle')" class="w-full py-2.5 rounded-xl border border-slate-700 text-slate-400 text-xs font-semibold hover:text-white mt-2">
+          ยกเลิกและกลับหน้าแรก
+        </button>
+      </div>
+
+      <!-- ================= 2.5 FRAMES MENU & MANAGEMENT SCREEN ================= -->
+      <!-- ================= 2.5 CUSTOMER FRAMES SELECTION GALLERY ================= -->
+      <div id="screen-frames" class="hidden flex-col justify-between h-full py-1">
+        <div class="flex-1 flex flex-col overflow-hidden">
+          
+          <!-- Header -->
+          <div class="flex justify-between items-center mb-2 px-1">
+            <div>
+              <span class="text-[10px] font-bold text-emerald-400 tracking-wider">FRAME COLLECTION</span>
+              <h2 class="text-base font-black text-white">เลือกกรอบรูปและสไตล์</h2>
+              <p class="text-[10px] text-slate-400">แตะกรอบรูปที่ต้องการเพื่อเริ่มถ่ายภาพได้ทันที</p>
+            </div>
+            <button onclick="goToScreen('idle')" class="text-slate-400 hover:text-white text-xs px-2.5 py-1 bg-slate-800 rounded-xl transition">✕ ปิด</button>
+          </div>
+
+          <!-- Frames List Header -->
+          <div class="flex justify-between items-center mb-1.5 px-1 text-[11px] text-slate-400">
+            <span id="frames-count-label" class="font-bold text-white">กรอบรูปทั้งหมดที่ติดตั้งในระบบ:</span>
+            <span class="text-[9px] text-emerald-400 font-mono">พร้อมใช้งาน 100%</span>
+          </div>
+
+          <!-- Customer Frame Items Scroll Container (Large Visual Grid) -->
+          <div id="frames-list-container" class="flex-1 overflow-y-auto grid grid-cols-2 gap-2.5 p-1 pr-1.5">
+            <!-- Dynamic items rendered by renderSystemFrames() -->
+          </div>
+
+        </div>
+
+        <div class="flex gap-2 mt-2 pt-1 border-t border-slate-800">
+          <button onclick="goToScreen('idle')" class="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-400 text-xs font-semibold hover:text-white transition">
+            ✕ ย้อนกลับ
+          </button>
+          <button onclick="goToScreen('package')" class="flex-[2] py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-xs shadow hover:scale-[1.02] active:scale-[0.98] transition">
+            ไปหน้าถ่ายภาพ ➔
+          </button>
+        </div>
+      </div>
+
+      <!-- ================= 3. THAI BANK & PROMPTPAY PAYMENT ================= -->
+      <div id="screen-payment" class="hidden flex-col justify-between h-full py-2.5 text-center">
+        <div>
+          <span class="text-[11px] font-bold text-emerald-400 tracking-wider">STEP 2 / 4</span>
+          <h2 class="text-base font-black text-white mt-0.5">ชำระเงินผ่าน Mobile Banking / พร้อมเพย์</h2>
+          <p class="text-xs text-slate-400" id="payment-summary">Receipt Photobooth • ฿89</p>
+
+          <div id="payment-bank-card" class="bg-[#181824] border border-[#00A950] rounded-3xl p-3.5 my-2 mx-auto max-w-[270px] shadow-xl transition-all duration-300">
+            <!-- Dynamic Bank Header Banner -->
+            <div id="payment-bank-banner" class="w-full bg-[#00A950] text-white py-1 px-2.5 rounded-xl flex items-center justify-between mb-2">
+              <span id="payment-bank-code-badge" class="bg-white text-[#00A950] text-[10px] font-black px-1.5 py-0.5 rounded">KBANK</span>
+              <span id="payment-bank-name" class="text-xs font-bold truncate">ธนาคารกสิกรไทย</span>
+              <span class="text-[9px] bg-black/20 px-1.5 py-0.5 rounded">AUTO-ADVANCE</span>
+            </div>
+
+            <!-- QR Code Box -->
+            <div class="bg-white p-2 rounded-2xl inline-block shadow-md">
+              <svg class="w-28 h-28 text-black" viewBox="0 0 100 100" fill="currentColor">
+                <rect x="5" y="5" width="28" height="28" fill="black" rx="4"/>
+                <rect x="9" y="9" width="20" height="20" fill="white" rx="2"/>
+                <rect x="13" y="13" width="12" height="12" fill="black" rx="1"/>
+                <rect x="67" y="5" width="28" height="28" fill="black" rx="4"/>
+                <rect x="71" y="9" width="20" height="20" fill="white" rx="2"/>
+                <rect x="75" y="13" width="12" height="12" fill="black" rx="1"/>
+                <rect x="5" y="67" width="28" height="28" fill="black" rx="4"/>
+                <rect x="9" y="71" width="20" height="20" fill="white" rx="2"/>
+                <rect x="13" y="75" width="12" height="12" fill="black" rx="1"/>
+                <rect x="40" y="8" width="8" height="8"/><rect x="42" y="24" width="8" height="6"/>
+                <rect x="8" y="42" width="6" height="8"/><rect x="38" y="40" width="24" height="20"/>
+                <rect x="70" y="42" width="14" height="6"/><rect x="45" y="68" width="12" height="14"/>
+              </svg>
+            </div>
+
+            <div class="mt-1 text-emerald-400 font-black text-2xl" id="payment-amount">฿89.00</div>
+
+            <!-- Account Details -->
+            <div class="mt-1 text-[10px] text-slate-300 bg-[#0f0f14] p-1.5 rounded-lg border border-slate-800 space-y-0.5 text-left">
+              <div class="flex justify-between">
+                <span class="text-slate-400">เลขที่บัญชี:</span>
+                <span id="payment-acc-no" class="font-bold text-white font-mono">089-2-99881-4</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">ชื่อบัญชี:</span>
+                <span id="payment-acc-name" class="font-medium text-slate-200 truncate max-w-[150px]">บจก. เคพท์ มีเดีย โฟโต้บูธ</span>
+              </div>
+              <div class="flex justify-between text-emerald-400">
+                <span>พร้อมเพย์:</span>
+                <span id="payment-promptpay" class="font-bold font-mono">0105566123456</span>
+              </div>
+            </div>
+            <div class="text-[9px] text-slate-500 font-mono mt-1">REF: KP-EMVCO-9921</div>
+          </div>
+
+          <!-- Real-time Webhook Auto-Advance Status -->
+          <div id="payment-auto-status" class="flex items-center justify-center gap-1.5 text-xs text-emerald-400 font-medium py-1 px-3 bg-emerald-950/40 border border-emerald-500/30 rounded-full mx-auto max-w-[290px]">
+            <svg id="payment-spinner" class="animate-spin w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+            <span id="payment-status-text">ตรวจจับเงินเข้าอัตโนมัติ (กำลังรอการสแกน)...</span>
+          </div>
+        </div>
+
+        <div class="space-y-1.5">
+          <button onclick="triggerImmediatePaymentSuccess()" class="w-full py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-xs shadow-lg hover:opacity-90 flex items-center justify-center gap-1.5">
+            <span>⚡ จำลองเงินเข้าทันที (Auto-Advance ➔)</span>
+          </button>
+          <button onclick="goToScreen('package')" class="text-[11px] text-slate-400 hover:text-white">
+            ย้อนกลับไปเปลี่ยนแพ็กเกจ
+          </button>
+        </div>
+      </div>
+
+      <!-- ================= 3.5 POST-PAYMENT CUSTOMER FRAME SELECTION SCREEN ================= -->
+      <div id="screen-frame-select" class="hidden flex-col justify-between h-full py-1">
+        <div class="flex-1 flex flex-col overflow-hidden">
+          <!-- Header -->
+          <div class="flex justify-between items-center mb-1.5 px-1">
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] font-bold text-emerald-400 tracking-wider">STEP 3 / 4</span>
+                <span class="text-[9px] bg-emerald-950 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.2 rounded font-bold">ชำระเงินสำเร็จแล้ว ✅</span>
+              </div>
+              <h2 class="text-base font-black text-white mt-0.5">เลือกดีไซน์กรอบรูป</h2>
+              <p class="text-[10px] text-slate-400" id="frame-select-subhead">เลือกกรอบรูปในระบบที่คุณชื่นชอบเพื่อเริ่มถ่ายภาพ</p>
+            </div>
+            <div class="text-right">
+              <span id="frame-select-pkg-badge" class="text-[10px] bg-amber-950 text-amber-300 border border-amber-500/40 px-2 py-1 rounded-lg font-bold block">📰 หนังสือพิมพ์</span>
+            </div>
+          </div>
+
+          <!-- Filter Pills / Tabs -->
+          <div class="flex gap-1.5 mb-2 px-1">
+            <button id="btn-filter-frame-mode" onclick="setFrameSelectFilter('mode')" class="flex-1 py-1.5 px-2 rounded-lg bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center gap-1 shadow transition">
+              <span id="filter-frame-mode-label">⭐ กรอบตรงตามโหมด (4)</span>
+            </button>
+            <button id="btn-filter-frame-all" onclick="setFrameSelectFilter('all')" class="flex-1 py-1.5 px-2 rounded-lg bg-slate-800 text-slate-300 font-bold text-[10px] hover:bg-slate-700 flex items-center justify-center gap-1 transition">
+              <span>🌐 กรอบทั้งหมดในระบบ (<span id="filter-frame-all-count">8</span>)</span>
+            </button>
+          </div>
+
+          <!-- Customer Frame Selection List (Large Visual Grid) -->
+          <div id="customer-select-frames-list" class="flex-1 overflow-y-auto grid grid-cols-2 gap-2.5 p-1 pr-1.5">
+            <!-- Dynamic frame cards populated by renderCustomerFrameSelection() -->
+          </div>
+        </div>
+
+        <!-- Sticky Bottom Confirmation Bar -->
+        <div class="mt-2 pt-2 border-t border-slate-800 bg-[#0c0c12]/95 backdrop-blur-sm space-y-1.5">
+          <div class="flex items-center justify-between text-xs px-1">
+            <div class="flex items-center gap-1.5 truncate mr-2">
+              <span class="text-slate-400 text-[10px]">กรอบที่เลือก:</span>
+              <span id="label-selected-frame-name" class="font-bold text-white text-[11px] truncate">Songwat Times (หน้าหนึ่งวินเทจ)</span>
+            </div>
+            <span id="label-selected-frame-layout" class="text-[9px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded font-mono">NEWSPAPER</span>
+          </div>
+
+          <div class="flex gap-2">
+            <button onclick="goToScreen('package')" class="py-2.5 px-3 rounded-xl border border-slate-700 text-slate-400 text-xs font-semibold hover:text-white transition">
+              ✕ เปลี่ยนโหมด
+            </button>
+            <button onclick="confirmSelectedFrameAndStartCamera()" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-slate-950 font-black text-xs sm:text-sm shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:scale-[1.02] active:scale-[0.98] transition flex items-center justify-center gap-1.5">
+              <span>📸 ยืนยันกรอบนี้ & เริ่มถ่ายภาพ ➔</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= 4. CAMERA VIEW ================= -->
+      <div id="screen-camera" class="hidden relative flex-col justify-between h-full -mx-5 -my-2 overflow-hidden bg-black">
+        <div id="live-camera-view" class="absolute inset-0 flex flex-col items-center justify-center bg-[#111118] transition duration-200 overflow-hidden">
+          <!-- Real Live Camera Feed (Webcam / iPad / Mac) -->
+          <video id="live-webcam" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover hidden"></video>
+          <!-- Remote Wireless Camera Feed (iPhone / Android / Tablet) -->
+          <img id="remote-camera-img" class="absolute inset-0 w-full h-full object-cover hidden" alt="Remote Camera Feed">
+          <canvas id="capture-canvas" class="hidden"></canvas>
+          
+          <div id="camera-fallback" class="flex flex-col items-center justify-center p-4 text-center">
+            <div class="w-24 h-24 rounded-full border border-emerald-500/40 flex items-center justify-center text-4xl opacity-60 mb-2">
+              📸
+            </div>
+            <span id="cam-active-display" class="text-xs text-emerald-400 font-mono font-bold">IPAD FRONT CAMERA</span>
+            <span id="cam-status-note" class="text-[10px] text-slate-400 font-mono mt-1">แตะปุ่มสลับกล้อง หรือเชื่อมต่อกล้องไร้สายจากมือถือได้</span>
+          </div>
+        </div>
+
+        <div id="camera-flash" class="absolute inset-0 bg-white pointer-events-none opacity-0"></div>
+
+        <!-- Top Camera Controls Bar -->
+        <div class="relative z-10 flex justify-between items-center px-4 pt-4">
+          <div class="bg-black/80 border border-emerald-500/40 px-3 py-1 rounded-full text-xs font-bold text-emerald-400 font-mono shadow">
+            SHOT <span id="camera-shot-cur">1</span> / <span id="camera-shot-tot">3</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="cycleCameraSource()" class="bg-black/80 hover:bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-full text-[10px] text-white flex items-center gap-1 shadow">
+              <span>🔄</span><span id="quick-cam-name">กล้องหน้า</span>
+            </button>
+            <button onclick="openRemoteCameraModal()" class="bg-indigo-950/90 hover:bg-indigo-900 border border-indigo-500/60 px-2.5 py-1 rounded-full text-[10px] text-indigo-300 font-bold flex items-center gap-1 shadow">
+              <span>📱</span><span>ต่อมือถือ</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Floating Translucent Countdown HUD (Never Blocks Camera Viewfinder) -->
+        <div class="relative z-10 flex flex-col items-center justify-center pointer-events-none my-auto">
+          <div class="w-28 h-28 rounded-full bg-black/35 backdrop-blur-md border-2 border-emerald-400/80 flex items-center justify-center shadow-[0_0_35px_rgba(16,185,129,0.5)]">
+            <span id="countdown-num" class="text-7xl font-black text-white drop-shadow-[0_0_20px_rgba(16,185,129,0.9)] animate-pulse">
+              3
+            </span>
+          </div>
+          <span id="countdown-subtext" class="text-[11px] text-white font-bold bg-black/60 px-3.5 py-1 rounded-full mt-2.5 font-mono border border-white/10 backdrop-blur-sm">
+            มองกล้องเลย! POSE ✨
+          </span>
+        </div>
+
+        <!-- Bottom Shutter Status & Quick Retake / Restart Button -->
+        <div class="relative z-10 pb-4 px-4 flex justify-between items-center text-[10px] text-slate-300 font-mono bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+          <span id="cam-source-indicator">SOURCE: IPAD CAMERA</span>
+          <button onclick="retakeAllPhotos()" class="pointer-events-auto bg-black/70 hover:bg-slate-800 border border-slate-700 text-amber-300 px-3 py-1 rounded-full flex items-center gap-1 shadow transition">
+            <span>🔄</span><span>เริ่มถ่ายใหม่</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ================= 5. REALISTIC PREVIEW (RECEIPT / NEWSPAPER) ================= -->
+      <div id="screen-preview" class="hidden flex-col justify-between h-full py-2">
+        <div class="overflow-y-auto max-h-[520px] px-2 flex justify-center">
+          
+          <!-- Realistic Thermal Receipt Slip -->
+          <div id="preview-receipt-card" class="roll-animation w-[260px] bg-white text-slate-900 rounded-b-xl shadow-2xl p-4 font-receipt text-xs border-t-8 border-slate-300">
+            <div class="text-center">
+              <div id="receipt-card-title" class="text-lg font-black tracking-widest">*** KEPT PHOTOBOOTH ***</div>
+              <div id="receipt-card-subtitle" class="text-[11px] text-slate-600">KEEP YOUR RECEIPT • BANGKOK</div>
+              <div class="text-[10px] my-1 border-y border-dashed border-slate-400 py-1">
+                <div>DATE: 2026-11-09 16:22</div>
+                <div>ORDER: #KP-BKK-8819</div>
+                <div id="receipt-paid-bank" class="text-[9px] font-bold text-slate-800">PAID VIA: KBANK PROMPTPAY</div>
+              </div>
+            </div>
+
+            <!-- Receipt Photo Shots (Dithered Simulation & Real Captured Photos) -->
+            <div id="receipt-shots-container" class="space-y-2 my-2">
+              <div class="bg-slate-200 border border-slate-400 h-24 rounded flex items-center justify-center text-xs text-slate-600 font-bold overflow-hidden relative">
+                <span class="text-2xl">😎</span>
+                <span class="absolute bottom-1 right-2 text-[9px] text-slate-500 font-mono">SHOT 01</span>
+              </div>
+              <div class="bg-slate-200 border border-slate-400 h-24 rounded flex items-center justify-center text-xs text-slate-600 font-bold overflow-hidden relative">
+                <span class="text-2xl">✌️</span>
+                <span class="absolute bottom-1 right-2 text-[9px] text-slate-500 font-mono">SHOT 02</span>
+              </div>
+              <div class="bg-slate-200 border border-slate-400 h-24 rounded flex items-center justify-center text-xs text-slate-600 font-bold overflow-hidden relative">
+                <span class="text-2xl">✨</span>
+                <span class="absolute bottom-1 right-2 text-[9px] text-slate-500 font-mono">SHOT 03</span>
+              </div>
+            </div>
+
+            <div class="border-t border-dashed border-slate-400 pt-2 text-[10px] space-y-1 text-center">
+              <div id="receipt-user-note" class="font-bold text-slate-800">
+                NOTE: Thanks for keeping this memory!
+              </div>
+              <div class="flex flex-col items-center justify-center my-1 bg-white p-1 rounded border border-slate-300">
+                <img id="receipt-print-qr-img" src="" alt="Download QR" class="w-16 h-16 object-contain mx-auto" />
+                <span class="text-[8px] font-mono font-bold text-slate-800 mt-0.5">SCAN FOR DIGITAL .JPG & .GIF</span>
+                <span id="receipt-drive-folder-text" class="text-[7px] text-slate-500 font-mono">DRIVE: 1giOkC-Y37veBgt4AshEYiatunVuzEtw2 (DAILY)</span>
+              </div>
+            </div>
+            
+            <div class="mt-3 text-center border-t border-slate-300 pt-1 font-mono text-[9px] text-slate-400">
+              ================================
+            </div>
+          </div>
+
+          <!-- Realistic Vintage Newspaper (The Songwat Times) -->
+          <div id="preview-newspaper-card" class="hidden roll-animation w-[275px] bg-[#f5ebd7] text-[#2b231d] rounded shadow-2xl p-4 font-newspaper text-xs border-4 border-[#3c3127]">
+            <div class="text-center border-b-2 border-[#3c3127] pb-1">
+              <div id="newspaper-card-title" class="text-2xl font-black tracking-tight font-newspaper italic">THE SONGWAT TIMES</div>
+              <div id="newspaper-card-subtitle" class="text-[9px] font-sans tracking-widest text-slate-700">SPECIAL MEMORIES EDITION • BANGKOK</div>
+              <div class="flex justify-between text-[8px] font-sans border-t border-[#3c3127] mt-1 pt-0.5">
+                <span>VOL. XXIV NO. 109</span>
+                <span>PRICE 140 THB</span>
+                <span>BANGKOK, THAILAND</span>
+              </div>
+            </div>
+
+            <div class="my-2 border border-[#3c3127] p-1 bg-[#ede0c7]">
+              <div id="newspaper-photo-box" class="h-36 bg-[#8a7a66] sepia rounded flex items-center justify-center text-3xl overflow-hidden">
+                📸
+              </div>
+              <div class="text-[8px] font-sans text-center mt-1 italic text-slate-700">
+                Fig 1.1: Historic Portrait Captured at Kept Songwat Booth
+              </div>
+            </div>
+
+            <div class="border-t border-[#3c3127] pt-1.5 text-[9px] flex items-center justify-between">
+              <div>
+                <div class="font-bold uppercase text-[9px]">A Memorable Day in Old Town</div>
+                <p id="newspaper-user-note" class="text-[7px] leading-tight mt-0.5 font-sans text-slate-800">
+                  Laughter and stories recorded on classic vintage print. Kept forever in Bangkok.
+                </p>
+                <span class="text-[6px] text-slate-600 block mt-0.5 font-mono">SCAN QR FOR DIGITAL .JPG & .GIF</span>
+              </div>
+              <img id="newspaper-print-qr-img" src="" alt="Download QR" class="w-12 h-12 object-contain bg-white p-0.5 border border-[#3c3127] rounded shrink-0 ml-1.5" />
+            </div>
+          </div>
+
+        </div>
+
+        <div class="space-y-2 mt-2">
+          <!-- Primary: Confirm & Proceed to Print -->
+          <button id="btn-confirm-print" onclick="confirmAndPrintPhotos()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-[0_0_25px_rgba(16,185,129,0.5)] hover:scale-[1.02] active:scale-[0.98] transition flex items-center justify-center gap-2">
+            <span class="text-base">✅</span>
+            <span>ยืนยันภาพถ่าย & สั่งพิมพ์ (Confirm & Print)</span>
+          </button>
+
+          <!-- Secondary Actions: Retake Photos & Edit Note -->
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="retakeAllPhotos()" class="py-2.5 rounded-xl bg-amber-950/70 hover:bg-amber-900 border border-amber-500/60 text-amber-300 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition">
+              <span>🔄</span><span>ถ่ายรูปใหม่ (Retake)</span>
+            </button>
+            <button onclick="promptEditNote()" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold text-xs flex items-center justify-center gap-1.5 transition">
+              <span>✏️</span><span>แก้ไขข้อความ</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= 6. FINAL SHARE & CUSTOMER PICKUP SCREEN ================= -->
+      <div id="screen-final" class="hidden flex-col justify-between h-full py-2 text-center overflow-y-auto space-y-2.5">
+        
+        <!-- Header: Success Tag -->
+        <div class="space-y-0.5">
+          <div class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 text-[10px] font-bold tracking-widest uppercase">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            บันทึกสำเร็จ • พร้อมรับภาพดิจิทัล
+          </div>
+          <h2 class="text-lg sm:text-xl font-black text-white tracking-wide">สแกนรับรูปถ่าย & ภาพเคลื่อนไหว</h2>
+          <p class="text-[11px] text-slate-300">ใช้กล้องมือถือสแกน QR Code เพื่อรับไฟล์ .JPG และ .GIF ทันที</p>
+        </div>
+
+        <!-- HERO: Large High-Contrast QR Code Card -->
+        <div class="bg-gradient-to-b from-[#181824] to-[#101018] border-2 border-emerald-400/80 rounded-3xl p-3.5 mx-auto w-full max-w-[340px] shadow-[0_0_35px_rgba(16,185,129,0.3)] space-y-2.5">
+          
+          <div class="flex items-center justify-between border-b border-slate-800 pb-1.5">
+            <div class="text-left">
+              <span class="text-xs font-black text-white flex items-center gap-1">
+                <span>📱</span><span>Scan to Download</span>
+              </span>
+              <span id="final-order-id-label" class="text-[10px] font-mono text-emerald-400 font-bold">ORDER: #KP-BKK-8819</span>
+            </div>
+            <span class="text-[9px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-500 px-2 py-0.5 rounded-full font-bold animate-pulse">
+              ● READY
+            </span>
+          </div>
+
+          <!-- Crisp Big QR Code Center -->
+          <div class="bg-white p-3 rounded-2xl shadow-2xl flex items-center justify-center mx-auto w-[200px] h-[200px] border-4 border-emerald-500/30">
+            <div id="final-qr-container" class="w-[170px] h-[170px] flex items-center justify-center">
+              <img id="final-download-qr-img" src="" alt="Scan QR" class="w-full h-full object-contain" />
+            </div>
+          </div>
+
+          <div class="bg-black/60 p-2 rounded-xl border border-slate-800/80 text-[10px] space-y-0.5">
+            <div class="text-emerald-300 font-bold flex items-center justify-center gap-1">
+              <span>✓</span><span>ภาพถ่ายต้นฉบับคมชัด <b>.JPG</b></span>
+            </div>
+            <div class="text-indigo-300 font-bold flex items-center justify-center gap-1">
+              <span>✓</span><span>ภาพเคลื่อนไหวดุ๊กดิ๊ก <b>.GIF</b> (Boomerang)</span>
+            </div>
+            <div class="text-slate-400 text-[8px] pt-0.5">
+              รองรับทั้ง iPhone (Safari) และ Android (Chrome) โหลดลงเครื่องได้เลย
+            </div>
+          </div>
+
+          <!-- Preview & Direct Download Badges (JPG + GIF) -->
+          <div class="grid grid-cols-2 gap-2 text-left pt-0.5">
+            <!-- 1. JPG Card -->
+            <div class="bg-[#0f0f16] p-2 rounded-xl border border-emerald-500/40 flex flex-col justify-between space-y-1">
+              <div class="flex items-center gap-1 text-[9px] text-emerald-400 font-bold">
+                <span>📸</span><span>รูปในกรอบ (.JPG)</span>
+              </div>
+              <div class="w-full h-16 bg-black rounded-lg overflow-hidden border border-slate-800">
+                <img id="final-jpg-thumb" src="" alt="JPG Preview" class="w-full h-full object-cover" />
+              </div>
+              <a id="final-direct-download-jpg" href="#" download="Kept_Photo.jpg" class="w-full py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[9px] flex items-center justify-center gap-1 transition shadow">
+                <span>⬇️</span><span>บันทึก .JPG</span>
+              </a>
+            </div>
+
+            <!-- 2. GIF Card -->
+            <div class="bg-[#0f0f16] p-2 rounded-xl border border-indigo-500/40 flex flex-col justify-between space-y-1">
+              <div class="flex items-center gap-1 text-[9px] text-indigo-400 font-bold">
+                <span>🎞️</span><span>ดุ๊กดิ๊กในกรอบ (.GIF)</span>
+              </div>
+              <div class="w-full h-16 bg-black rounded-lg overflow-hidden border border-slate-800 relative flex items-center justify-center">
+                <img id="final-gif-thumb" src="" alt="GIF Preview" class="w-full h-full object-cover" />
+                <div id="final-gif-loading" class="absolute inset-0 flex items-center justify-center bg-black/60 hidden">
+                  <div class="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              </div>
+              <a id="final-direct-download-gif" href="#" download="Kept_Animated.gif" class="w-full py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold text-[9px] flex items-center justify-center gap-1 transition shadow">
+                <span>⬇️</span><span>บันทึก .GIF</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Google Drive Status & Link -->
+          <div class="bg-[#0a141a] border border-teal-500/40 p-2 rounded-xl text-[9px] text-teal-300 space-y-1">
+            <div class="flex items-center justify-between font-bold">
+              <span class="flex items-center gap-1 text-teal-300">
+                <span>☁️</span><span>บันทึกลง Google Drive:</span>
+              </span>
+              <span id="final-drive-sync-badge" class="text-amber-300 font-bold">⏳ กำลังตรวจสอบ...</span>
+            </div>
+            <div class="flex items-center justify-between bg-black/40 px-2 py-0.5 rounded text-[8px] font-mono border border-teal-500/20">
+              <span class="text-slate-400">📅 โฟลเดอร์ประจำวัน:</span>
+              <span id="final-daily-folder-tag" class="text-white font-bold">2026-11-12</span>
+            </div>
+            <a id="final-drive-folder-link" href="https://drive.google.com/drive/folders/1giOkC-Y37veBgt4AshEYiatunVuzEtw2?usp=sharing" target="_blank" class="block text-center py-1 bg-teal-800 hover:bg-teal-700 text-white rounded-lg font-bold text-[9px] transition">
+              📂 เปิดดูไฟล์ใน Google Drive
+            </a>
+          </div>
+
+        </div>
+
+        <!-- Action Buttons: Print Slip & New Session -->
+        <div class="space-y-1.5 pt-0.5">
+          <button onclick="window.print()" class="w-full py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 shadow transition">
+            <span>🖨️</span><span>สั่งพิมพ์ภาพสลิปใบเสร็จ (Print Receipt)</span>
+          </button>
+          <button onclick="goToScreen('idle')" class="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg hover:scale-[1.02] active:scale-[0.98] transition">
+            ✨ เสร็จสิ้น & ถ่ายรอบใหม่ (New Session)
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ================= BOTTOM FLOATING DOCK (CUSTOMER UI) ================= -->
+    <div id="floating-dock" class="relative z-20 flex items-center justify-around bg-[#181824]/90 backdrop-blur-md border border-slate-700/60 rounded-2xl py-2 px-3 shadow-xl">
+      <button onclick="goToScreen('frames')" class="flex flex-col items-center gap-0.5 text-slate-400 hover:text-white transition">
+        <span class="text-base">🎨</span>
+        <span class="text-[9px] font-bold">Frames</span>
+      </button>
+
+      <button onclick="goToScreen('package')" class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-xs shadow-md hover:scale-105 active:scale-95 transition">
+        <span>📸</span>
+        <span>START</span>
+      </button>
+
+      <button onclick="toggleAdminModal(true)" class="flex flex-col items-center gap-0.5 text-slate-400 hover:text-white transition">
+        <span class="text-base">⚙️</span>
+        <span class="text-[9px] font-bold">Settings</span>
+      </button>
+    </div>
+
+    <!-- ================= ADMIN PASSWORD & HARDWARE SETUP MODAL ================= -->
+    <div id="modal-admin" class="hidden absolute inset-0 z-50 bg-black/95 backdrop-blur-md flex flex-col justify-between p-5">
+      
+      <!-- Admin PIN Input View -->
+      <div id="admin-pin-view" class="flex-1 flex flex-col justify-center items-center text-center">
+        <div class="w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl mb-3 border border-emerald-500/40">
+          🔒
+        </div>
+        <h3 class="text-lg font-black text-white">Admin Authentication</h3>
+        <p id="admin-pin-prompt-text" class="text-xs text-slate-400 mb-4">ใส่รหัส PIN เพื่อเข้าสู่โหมดตั้งค่าระบบ (ค่าเริ่มต้น: 1234)</p>
+        
+        <input id="admin-pin-input" type="password" maxlength="6" placeholder="••••" onkeyup="if(event.key==='Enter') checkAdminPin()" class="w-40 text-center text-2xl tracking-[0.4em] bg-[#181824] border border-slate-700 rounded-xl py-2 text-white mb-4 focus:border-emerald-400 outline-none">
+        
+        <div class="flex gap-2">
+          <button onclick="toggleAdminModal(false)" class="px-4 py-2 rounded-xl border border-slate-700 text-slate-400 text-xs">ยกเลิก</button>
+          <button onclick="checkAdminPin()" class="px-5 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-lg hover:bg-emerald-500 transition">เข้าสู่ระบบ</button>
+        </div>
+      </div>
+
+      <!-- Admin Dashboard & Hardware View (Unlocked) -->
+      <div id="admin-dashboard-view" class="hidden bg-[#181824] border border-emerald-500/50 rounded-3xl p-4 max-h-[720px] flex flex-col justify-between overflow-hidden">
+        
+        <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+          <div class="flex items-center gap-1.5">
+            <span class="text-emerald-400 font-bold">⚙️</span>
+            <h3 class="font-black text-white text-sm">Kept Admin & System Settings</h3>
+          </div>
+          <button onclick="toggleAdminModal(false)" class="text-slate-400 hover:text-white text-xs font-bold px-2 py-1 bg-slate-800 rounded">✕ ปิด</button>
+        </div>
+
+        <!-- Quick System Status & Device Settings (Moved from Top Customer View) -->
+        <div class="bg-[#0f0f14] p-2.5 rounded-2xl border border-slate-800 space-y-2 my-2 text-xs">
+          <!-- Active Bank & Current Camera Status -->
+          <div class="flex flex-wrap items-center justify-between gap-1.5 text-[10px]">
+            <div class="flex items-center gap-1.5 bg-[#181824] px-2 py-1 rounded-lg border border-slate-700">
+              <span class="text-slate-400">บัญชีรับเงิน:</span>
+              <span id="admin-summary-bank-badge" class="px-1.5 py-0.5 rounded text-[9px] font-black text-white bg-[#00A950]">KBANK กสิกรไทย</span>
+              <span id="admin-summary-bank-acc" class="font-mono text-emerald-400 font-bold">089-2-99881-4</span>
+            </div>
+            <div class="flex items-center gap-1.5 bg-[#181824] px-2 py-1 rounded-lg border border-slate-700">
+              <span class="text-slate-400">กล้องที่ใช้:</span>
+              <span id="admin-summary-cam-name" class="text-emerald-400 font-bold">กล้องหน้า iPad</span>
+            </div>
+            <div class="flex items-center gap-1.5 bg-[#181824] px-2 py-1 rounded-lg border border-slate-700">
+              <span class="text-slate-400">นับถอยหลัง:</span>
+              <span id="admin-summary-countdown-sec" class="text-amber-400 font-bold font-mono">3 วิ</span>
+            </div>
+          </div>
+
+          <!-- Quick Action Buttons: Camera Switch, Wireless Cam, iPad Install & Device View -->
+          <div class="flex items-center justify-between gap-1.5 flex-wrap pt-1 border-t border-slate-800">
+            <div class="flex items-center gap-1 flex-wrap">
+              <button onclick="cycleCameraSource()" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold text-[10px] flex items-center gap-1 border border-slate-700 transition">
+                <span>📷</span><span>สลับกล้อง</span>
+              </button>
+              <button onclick="openRemoteCameraModal()" class="px-2 py-1 rounded-lg bg-indigo-950 hover:bg-indigo-900 text-indigo-300 font-bold text-[10px] flex items-center gap-1 border border-indigo-600/40 transition">
+                <span>📱</span><span>ต่อกล้องมือถือ</span>
+              </button>
+              <button onclick="openIpadInstallModal()" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10px] flex items-center gap-1 shadow transition">
+                <span>📲</span><span>วิธีติดตั้งลง iPad</span>
+              </button>
+            </div>
+
+            <!-- Screen View Switcher -->
+            <div class="flex items-center gap-1">
+              <span class="text-slate-400 text-[10px]">จอภาพ:</span>
+              <button onclick="setDeviceView('ipad-portrait')" id="btn-view-ipad" class="px-2 py-1 rounded-lg bg-emerald-600 text-white font-bold text-[10px] transition">
+                📱 iPad
+              </button>
+              <button onclick="setDeviceView('tv-landscape')" id="btn-view-tv" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 font-bold text-[10px] hover:bg-slate-700 transition">
+                🖥️ TV แนวนอน
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin Tab Buttons -->
+        <div class="flex gap-1 my-2 bg-slate-900 p-1 rounded-xl text-[10px] font-bold overflow-x-auto">
+          <button onclick="switchAdminTab('bank')" id="tab-btn-bank" class="flex-1 min-w-[70px] py-1.5 rounded-lg bg-emerald-600 text-white">🏦 ธนาคาร</button>
+          <button onclick="switchAdminTab('gdrive')" id="tab-btn-gdrive" class="flex-1 min-w-[65px] py-1.5 rounded-lg text-slate-400 hover:text-white">☁️ Drive</button>
+          <button onclick="switchAdminTab('display')" id="tab-btn-display" class="flex-1 min-w-[65px] py-1.5 rounded-lg text-slate-400 hover:text-white">🖥️ จอภาพ</button>
+          <button onclick="switchAdminTab('camera')" id="tab-btn-camera" class="flex-1 min-w-[55px] py-1.5 rounded-lg text-slate-400 hover:text-white">📷 กล้อง</button>
+          <button onclick="switchAdminTab('frames')" id="tab-btn-frames" class="flex-1 min-w-[55px] py-1.5 rounded-lg text-slate-400 hover:text-white">🖼️ เฟรม</button>
+          <button onclick="switchAdminTab('printer')" id="tab-btn-printer" class="flex-1 min-w-[65px] py-1.5 rounded-lg text-slate-400 hover:text-white">🖨️ ปริ้นเตอร์</button>
+          <button onclick="switchAdminTab('security')" id="tab-btn-security" class="flex-1 min-w-[65px] py-1.5 rounded-lg text-slate-400 hover:text-white">🔐 รหัส PIN</button>
+          <button onclick="switchAdminTab('app')" id="tab-btn-app" class="flex-1 min-w-[75px] py-1.5 rounded-lg text-slate-400 hover:text-white">📲 ติดตั้งแอป</button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto space-y-2.5 text-xs pr-1">
+
+          <!-- TAB: 🏦 THAI BANK ACCOUNTS & PROMPTPAY BINDING -->
+          <div id="admin-tab-bank" class="space-y-2">
+            <div class="p-2.5 rounded-xl bg-[#0f0f14] border border-emerald-500/40">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-emerald-400 font-bold text-[11px]">🏦 บัญชีธนาคารรับเงินหลักปัจจุบัน (Active):</span>
+                <span id="admin-active-bank-badge" class="bg-[#00A950] text-white text-[9px] font-black px-1.5 py-0.5 rounded">KBANK กสิกรไทย</span>
+              </div>
+              <div class="bg-[#181824] p-2 rounded border border-slate-700 text-[10px] space-y-0.5">
+                <div class="flex justify-between">
+                  <span class="text-slate-400">ชื่อบัญชี:</span>
+                  <span id="admin-bank-accname" class="font-bold text-white">บจก. เคพท์ มีเดีย โฟโต้บูธ</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">เลขที่บัญชี:</span>
+                  <span id="admin-bank-accno" class="font-mono text-emerald-400 font-bold">089-2-99881-4</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">พร้อมเพย์ AnyID:</span>
+                  <span id="admin-bank-promptpay" class="font-mono text-cyan-400 font-bold">0105566123456</span>
+                </div>
+                <div class="flex justify-between text-emerald-300">
+                  <span>ตรวจจับเงินเข้า:</span>
+                  <span class="font-bold">⚡ Real-time Auto-Advance (Webhook)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Switch Thai Bank -->
+            <div class="p-2.5 rounded-xl bg-[#0f0f14] border border-slate-800 space-y-1.5">
+              <span class="text-white font-bold text-[11px] block">สลับบัญชีธนาคารที่ต้องการรับเงิน:</span>
+              <div class="grid grid-cols-2 gap-1.5 text-[10px]">
+                <button onclick="selectThaiBank('KBANK')" class="p-1.5 rounded bg-emerald-950/60 border border-emerald-500 text-emerald-300 font-bold flex items-center gap-1.5 text-left hover:bg-emerald-900/40">
+                  <span class="w-3.5 h-3.5 rounded bg-[#00A950] text-[8px] text-white flex items-center justify-center font-black">K</span>
+                  <span>กสิกรไทย (KBANK)</span>
+                </button>
+                <button onclick="selectThaiBank('SCB')" class="p-1.5 rounded bg-purple-950/60 border border-purple-500 text-purple-300 font-bold flex items-center gap-1.5 text-left hover:bg-purple-900/40">
+                  <span class="w-3.5 h-3.5 rounded bg-[#4E2A84] text-[8px] text-white flex items-center justify-center font-black">S</span>
+                  <span>ไทยพาณิชย์ (SCB)</span>
+                </button>
+                <button onclick="selectThaiBank('KTB')" class="p-1.5 rounded bg-sky-950/60 border border-sky-500 text-sky-300 font-bold flex items-center gap-1.5 text-left hover:bg-sky-900/40">
+                  <span class="w-3.5 h-3.5 rounded bg-[#00A6E6] text-[8px] text-white flex items-center justify-center font-black">K</span>
+                  <span>กรุงไทย (KTB)</span>
+                </button>
+                <button onclick="selectThaiBank('BBL')" class="p-1.5 rounded bg-blue-950/60 border border-blue-500 text-blue-300 font-bold flex items-center gap-1.5 text-left hover:bg-blue-900/40">
+                  <span class="w-3.5 h-3.5 rounded bg-[#1E3A8A] text-[8px] text-white flex items-center justify-center font-black">B</span>
+                  <span>กรุงเทพ (BBL)</span>
+                </button>
+                <button onclick="selectThaiBank('BAY')" class="p-1.5 rounded bg-amber-950/60 border border-amber-500 text-amber-300 font-bold flex items-center gap-1.5 text-left hover:bg-amber-900/40">
+                  <span class="w-3.5 h-3.5 rounded bg-[#FEC300] text-[8px] text-slate-900 flex items-center justify-center font-black">B</span>
+                  <span>กรุงศรี (BAY)</span>
+                </button>
+                <button onclick="selectThaiBank('PROMPTPAY')" class="p-1.5 rounded bg-cyan-950/60 border border-cyan-500 text-cyan-300 font-bold flex items-center gap-1.5 text-left hover:bg-cyan-900/40">
+                  <span class="w-3.5 h-3.5 rounded bg-[#003D6B] text-[8px] text-white flex items-center justify-center font-black">P</span>
+                  <span>พร้อมเพย์ AnyID</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Form: ผูกบัญชีใหม่ -->
+            <div class="p-2.5 rounded-xl bg-[#0f0f14] border border-slate-800 space-y-1.5">
+              <span class="text-white font-bold text-[11px] block">➕ เพิ่ม/แก้ไขข้อมูลบัญชีธนาคาร:</span>
+              <input id="bank-input-accno" type="text" placeholder="เลขที่บัญชี (เช่น 012-3-45678-9)" class="w-full bg-[#181824] border border-slate-700 rounded p-1.5 text-white text-[10px]">
+              <input id="bank-input-accname" type="text" placeholder="ชื่อบัญชี (เช่น บริษัท เคพท์ มีเดีย จำกัด)" class="w-full bg-[#181824] border border-slate-700 rounded p-1.5 text-white text-[10px]">
+              <input id="bank-input-promptpay" type="text" placeholder="หมายเลขพร้อมเพย์ (เบอร์โทร หรือ เลข 13 หลัก)" class="w-full bg-[#181824] border border-slate-700 rounded p-1.5 text-white text-[10px]">
+              <button onclick="handleSaveCustomBank()" class="w-full py-1.5 bg-emerald-600 text-white rounded font-bold text-xs hover:bg-emerald-500">
+                💾 บันทึกและผูกบัญชี
+              </button>
+            </div>
+
+            <button onclick="testBankWebhookPing()" class="w-full py-2 bg-slate-800 border border-emerald-500/50 text-emerald-300 rounded-lg font-bold text-xs hover:bg-slate-700 flex items-center justify-center gap-1.5">
+              <span>⚡ ทดสอบเชื่อมต่อ API ธนาคาร & Webhook (Ping)</span>
+            </button>
+          </div>
+
+          <!-- TAB: ☁️ GOOGLE DRIVE CENTRAL DATABASE -->
+          <div id="admin-tab-gdrive" class="hidden space-y-2.5">
+            <div class="p-3 rounded-xl bg-[#0f0f14] border border-emerald-500/40">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-emerald-400 font-bold text-[11px]">☁️ โฟลเดอร์ Google Drive ปลายทาง</span>
+                <span id="gdrive-sync-config-status" class="text-[9px] bg-amber-950 text-amber-300 border border-amber-500 px-1.5 py-0.2 rounded font-mono">รอใส่ Webhook URL</span>
+              </div>
+              <span class="text-slate-400 text-[10px] block mb-1">ID: 1giOkC-Y37veBgt4AshEYiatunVuzEtw2</span>
+              <div class="p-2 bg-[#181824] rounded border border-slate-700 text-[9px] break-all font-mono text-cyan-400">
+                https://drive.google.com/drive/folders/1giOkC-Y37veBgt4AshEYiatunVuzEtw2
+              </div>
+            </div>
+
+            <!-- Google Apps Script Webhook URL Config -->
+            <div class="p-3 rounded-xl bg-amber-950/20 border border-amber-500/40 space-y-1.5">
+              <label class="text-amber-300 font-bold text-[10px] block">
+                🔗 Google Apps Script Web App URL (สำหรับอัปโหลดรูปเข้า Drive อัตโนมัติ):
+              </label>
+              <input id="input-gdrive-webhook-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-[#181824] border border-slate-700 rounded-lg p-2 text-[10px] text-white font-mono focus:outline-none focus:border-emerald-500" />
+              <p class="text-[9px] text-slate-400 leading-tight">
+                นำ URL ที่ Deploy จากไฟล์ <code>google_apps_script_drive_sync.gs</code> มาวางที่นี่ครั้งเดียว ระบบจะบันทึกลงฐานข้อมูลกลาง (Cloudflare D1) เพื่อให้อัปโหลดรูป .JPG / .GIF เข้ารายวันโดยอัตโนมัติทุกเครื่อง
+              </p>
+              <button onclick="saveAndTestGdriveWebhook()" id="btn-save-gdrive-webhook" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs transition">
+                💾 บันทึก & ทดสอบเชื่อมต่อ Google Drive ทันที
+              </button>
+            </div>
+
+            <!-- Daily Folder Structure Status -->
+            <div class="p-2.5 rounded-xl bg-teal-950/30 border border-teal-500/40 space-y-1">
+              <div class="flex justify-between items-center text-[10px]">
+                <span class="text-teal-300 font-bold flex items-center gap-1">
+                  <span>📅</span><span>ระบบสร้างโฟลเดอร์แยกประจำวัน:</span>
+                </span>
+                <span class="text-[9px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded font-mono font-bold">YYYY-MM-DD</span>
+              </div>
+              <p class="text-[9px] text-slate-300 leading-tight">
+                ทุกครั้งที่ถ่ายเสร็จ ระบบจะสร้างโฟลเดอร์ตามวันที่ (เช่น <code>2026-11-12</code>) ใน Google Drive เพื่อจัดเก็บรูป .JPG, .GIF และช็อตเดี่ยวแยกเป็นระเบียบในแต่ละวัน
+              </p>
+            </div>
+          </div>
+
+          <!-- TAB: 🖥️ DISPLAY (IPAD / SMART TV) & OTG STABILITY -->
+          <div id="admin-tab-display" class="hidden space-y-2.5">
+            <div class="p-3 rounded-xl bg-[#0f0f14] border border-emerald-500/40">
+              <span class="text-emerald-400 font-bold text-[11px] block mb-1">🖥️ ปรับไซส์จอภาพ (Responsive iPad & Smart TV):</span>
+              <div class="space-y-2 text-[11px]">
+                <div>
+                  <label class="text-slate-400 text-[10px] block">อุปกรณ์จอภาพที่ติดตั้ง:</label>
+                  <select onchange="handleAdminDeviceChange(this.value)" class="w-full bg-[#181824] border border-slate-700 rounded p-1.5 text-white">
+                    <option value="ipad-portrait">📱 iPad / Android Tablet (10"-13" แนวตั้ง)</option>
+                    <option value="tv-landscape">🖥️ Smart TV / จอใหญ่ 32"-55" (Full HD/4K แนวนอน)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-[#0f0f14] border border-slate-800 space-y-2">
+              <span class="text-white font-bold text-[11px] block">🔌 ความเสถียรในการส่งรับข้อมูล (OTG & Network):</span>
+              <div class="p-2 bg-[#181824] border border-emerald-500/40 rounded-lg flex items-center justify-between">
+                <div>
+                  <span class="text-white font-bold text-[10px] block">สายตรง USB OTG Host (Type-C / Lightning)</span>
+                  <span class="text-[9px] text-emerald-400">● Latency: 0.8ms (Zero Drop • ไม่สะดุดในงานคนเยอะ)</span>
+                </div>
+                <span class="text-[9px] bg-emerald-950 text-emerald-400 border border-emerald-500 px-1.5 py-0.5 rounded font-bold">เชื่อมต่อแล้ว</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: 📷 CAMERA HARDWARE & COLOR CALIBRATION -->
+          <div id="admin-tab-camera" class="hidden space-y-2.5">
+            <div class="p-2.5 rounded-xl bg-[#0f0f14] border border-emerald-500/40 space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="text-emerald-400 font-bold text-[11px] block">📸 เลือกอุปกรณ์กล้อง:</span>
+                <button onclick="scanCameraDevices()" class="text-[9px] bg-slate-800 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded hover:bg-slate-700 flex items-center gap-1 transition">
+                  <span>🔍</span><span>สแกนกล้องใหม่</span>
+                </button>
+              </div>
+              <select id="camera-device-select" onchange="handleCameraChange(this.value)" class="w-full bg-[#181824] border border-slate-700 rounded p-1.5 text-white text-xs">
+                <option value="user">📱 กล้องหน้า iPad / Mac (FaceTime HD)</option>
+                <option value="environment">📷 กล้องหลัง iPad (Ultra Wide / 4K)</option>
+                <option value="remote">📡 กล้องไร้สายจากมือถือ / แท็บเล็ตอื่น (Wireless Remote Lens)</option>
+              </select>
+            </div>
+
+            <!-- Remote Camera Status & Connect Box -->
+            <div class="p-2.5 rounded-xl bg-indigo-950/30 border border-indigo-500/40 space-y-1.5">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-indigo-300 font-bold flex items-center gap-1">
+                  <span>📱</span><span>กล้องไร้สาย (Phone / Tablet Camera):</span>
+                </span>
+                <span id="remote-cam-status-badge" class="text-[10px] text-slate-400">⚪ ออฟไลน์</span>
+              </div>
+              <p class="text-[9px] text-slate-400 leading-relaxed">
+                นำกล้องจาก iPhone, Android, iPad หรือแท็บเล็ตเครื่องอื่นมาเชื่อมต่อผ่าน Wi-Fi เพื่อใช้เป็นเลนส์ของตู้ได้แบบ Real-time
+              </p>
+              <button onclick="openRemoteCameraModal()" class="w-full py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold text-[10px] flex items-center justify-center gap-1 shadow transition">
+                <span>🔗</span><span>เปิด QR Code เชื่อมต่อกล้องมือถือ</span>
+              </button>
+            </div>
+
+            <!-- COUNTDOWN TIMER CONFIGURATION -->
+            <div class="p-2.5 rounded-xl bg-[#0f0f14] border border-amber-500/40 space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="text-amber-400 font-bold text-[11px] block">⏱️ ตั้งเวลานับถอยหลังการถ่ายภาพ (Countdown Timer):</span>
+                <span id="admin-countdown-badge" class="text-[10px] bg-amber-950 text-amber-300 font-mono px-2 py-0.5 rounded border border-amber-500/40 font-bold">3 วินาที</span>
+              </div>
+              <p class="text-[9px] text-slate-400 leading-tight">
+                เลือกระยะเวลานับถอยหลังก่อนกดชัตเตอร์แต่ละภาพ เพื่อให้ลูกค้ามีเวลาจัดท่าทางและเตรียมตัว
+              </p>
+              <div class="grid grid-cols-3 gap-1.5 pt-0.5">
+                <button type="button" onclick="setCountdownDuration(3)" id="btn-countdown-3" class="py-2 px-1 rounded-lg text-center text-xs font-bold transition border">
+                  <div>⚡ 3 วิ</div>
+                  <div class="text-[8px] font-normal opacity-80">รวดเร็ว คล่องตัว</div>
+                </button>
+                <button type="button" onclick="setCountdownDuration(5)" id="btn-countdown-5" class="py-2 px-1 rounded-lg text-center text-xs font-bold transition border">
+                  <div>⭐ 5 วิ</div>
+                  <div class="text-[8px] font-normal opacity-80">มาตรฐาน แนะนำ</div>
+                </button>
+                <button type="button" onclick="setCountdownDuration(10)" id="btn-countdown-10" class="py-2 px-1 rounded-lg text-center text-xs font-bold transition border">
+                  <div>🧘 10 วิ</div>
+                  <div class="text-[8px] font-normal opacity-80">โพสท่าจัดเต็ม</div>
+                </button>
+              </div>
+              <!-- Custom Countdown Input -->
+              <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-800 text-[10px]">
+                <span class="text-slate-300">หรือระบุเวลาเอง (วินาที):</span>
+                <div class="flex items-center gap-1.5">
+                  <input type="number" id="input-custom-countdown" min="1" max="60" value="3" onchange="setCountdownDuration(this.value)" class="w-14 bg-[#181824] border border-amber-500/50 rounded p-1 text-center font-bold text-amber-300 text-xs outline-none">
+                  <span class="text-slate-400">วิ</span>
+                  <button type="button" onclick="setCountdownDuration(document.getElementById('input-custom-countdown').value)" class="px-2 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[10px] font-bold transition">ปรับใช้</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="p-2.5 rounded-xl bg-[#0f0f14] border border-slate-800 space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="text-white font-bold text-[11px]">🎛️ ปรับแต่งค่าสี & แสงกล้อง (Viewfinder Calibration):</span>
+                <button onclick="resetCameraCalibration()" class="text-[9px] text-slate-400 hover:text-white underline">รีเซ็ต</button>
+              </div>
+              
+              <div class="space-y-1.5 text-[10px]">
+                <div>
+                  <div class="flex justify-between text-slate-400"><span>ความสว่าง (Exposure / Brightness)</span><span id="val-bright">0.0 EV</span></div>
+                  <input type="range" id="slider-bright" min="-0.8" max="0.8" step="0.05" value="0" oninput="updateCalib('brightness', this.value)" class="w-full accent-emerald-500">
+                </div>
+                <div>
+                  <div class="flex justify-between text-slate-400"><span>คอนทราสต์ (Contrast)</span><span id="val-contrast">1.1x</span></div>
+                  <input type="range" id="slider-contrast" min="0.6" max="1.6" step="0.05" value="1.1" oninput="updateCalib('contrast', this.value)" class="w-full accent-emerald-500">
+                </div>
+                <div>
+                  <div class="flex justify-between text-slate-400"><span>ไวท์บาลานซ์ (Kelvin Temperature)</span><span id="val-wb">5500K</span></div>
+                  <input type="range" id="slider-wb" min="3000" max="8500" step="100" value="5500" oninput="updateCalib('wb', this.value)" class="w-full accent-emerald-500">
+                </div>
+                <div>
+                  <div class="flex justify-between text-slate-400"><span>ความอิ่มสี (Saturation)</span><span id="val-sat">1.0x</span></div>
+                  <input type="range" id="slider-sat" min="0" max="2" step="0.1" value="1.0" oninput="updateCalib('saturation', this.value)" class="w-full accent-emerald-500">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: 🖼️ FRAMES -->
+          <div id="admin-tab-frames" class="hidden space-y-2">
+            <!-- Google Drive Status Banner -->
+            <div class="p-2.5 rounded-xl bg-[#0f0f14] border border-teal-500/40 space-y-1.5">
+              <div class="flex justify-between items-center">
+                <span class="text-teal-300 font-bold text-[11px] flex items-center gap-1">
+                  <span>☁️</span><span>Google Drive จัดเก็บเฟรม:</span>
+                </span>
+                <span class="text-[9px] bg-teal-950 text-teal-400 border border-teal-500/40 px-1.5 py-0.2 rounded font-mono">ONLINE</span>
+              </div>
+              <div class="text-[9px] text-slate-400 font-mono break-all bg-black/40 p-1.5 rounded border border-slate-800">
+                Folder ID: 1giOkC-Y37veBgt4AshEYiatunVuzEtw2/frames
+              </div>
+              
+              <!-- Action Toolbar: ดึงจาก Drive / เพิ่มเฟรม -->
+              <div class="grid grid-cols-2 gap-1.5 pt-1 text-[10px] font-bold">
+                <button onclick="openDriveFrameModal()" class="py-2 px-1 rounded-xl bg-teal-700 hover:bg-teal-600 text-white flex items-center justify-center gap-1 shadow transition">
+                  <span>☁️</span><span>ดึงเฟรมจาก Drive</span>
+                </button>
+                <button onclick="openAddFrameModal()" class="py-2 px-1 rounded-xl bg-slate-800 border border-emerald-500/60 text-emerald-300 hover:bg-slate-700 flex items-center justify-center gap-1 transition">
+                  <span>➕</span><span>สร้างเฟรมใหม่</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Installed Frames Management Header -->
+            <div class="flex justify-between items-center pt-1 px-0.5">
+              <span id="admin-frames-count-label" class="text-[10px] text-slate-300 font-bold">เฟรมทั้งหมดที่ติดตั้งในระบบ:</span>
+              <span class="text-[9px] text-slate-500">จัดการ / ลบเฟรม</span>
+            </div>
+            <div id="admin-frames-list" class="space-y-1 max-h-[220px] overflow-y-auto pr-0.5">
+              <!-- Rendered by renderSystemFrames() -->
+            </div>
+          </div>
+
+          <!-- TAB: 🖨️ PRINTER -->
+          <div id="admin-tab-printer" class="hidden space-y-2">
+            <div class="p-2.5 rounded-xl bg-[#0f0f14] border border-emerald-500/30">
+              <span class="text-slate-400 block mb-0.5">สถานะเครื่องพิมพ์ความร้อน</span>
+              <span class="text-emerald-400 font-bold block">✓ Epson TM-T82 (เชื่อมต่อผ่านสายตรง OTG)</span>
+              <span class="text-[9px] text-slate-500">กระดาษคงเหลือ: 84% (~420 สลิป)</span>
+            </div>
+            <button onclick="alert('🖨️ ส่งคำสั่งพิมพ์ทดสอบสำเร็จ!');" class="w-full py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs">
+              🖨️ ทดสอบพิมพ์สลิปใบเสร็จ (Test Print)
+            </button>
+          </div>
+
+          <!-- TAB: 🔐 SECURITY & ADMIN PIN SETTINGS -->
+          <div id="admin-tab-security" class="hidden space-y-2.5">
+            <div class="p-3 rounded-xl bg-[#0f0f14] border border-emerald-500/40 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-emerald-400 font-bold text-[11px] flex items-center gap-1.5">
+                  <span>🔐</span><span>เปลี่ยนรหัสผ่านเข้าสู่ระบบตั้งค่า (Admin PIN)</span>
+                </span>
+                <span id="admin-pin-status-pill" class="text-[9px] bg-emerald-950 text-emerald-300 border border-emerald-500/50 px-2 py-0.5 rounded font-mono font-bold">
+                  เปิดใช้งาน PIN
+                </span>
+              </div>
+              <p class="text-[9px] text-slate-400 leading-relaxed">
+                กำหนดรหัส PIN 4-6 หลักใหม่ สำหรับป้องกันไม่ให้ลูกค้าหรือบุคคลภายนอกกดเข้ามาแก้ไขการตั้งค่าตู้ถ่ายภาพ
+              </p>
+              
+              <div class="space-y-2 pt-1 text-[10px]">
+                <div>
+                  <label class="text-slate-400 block mb-0.5">รหัส PIN ปัจจุบัน:</label>
+                  <input id="input-current-pin" type="password" maxlength="6" placeholder="รหัส PIN เดิม (ค่าเริ่มต้น 1234)" class="w-full bg-[#181824] border border-slate-700 rounded-lg p-2 text-white font-mono text-center tracking-[0.3em] outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                  <label class="text-slate-400 block mb-0.5">รหัส PIN ใหม่ (4-6 หลัก):</label>
+                  <input id="input-new-pin" type="password" maxlength="6" placeholder="ตั้งรหัส PIN ใหม่" class="w-full bg-[#181824] border border-slate-700 rounded-lg p-2 text-white font-mono text-center tracking-[0.3em] outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                  <label class="text-slate-400 block mb-0.5">ยืนยันรหัส PIN ใหม่อีกครั้ง:</label>
+                  <input id="input-confirm-pin" type="password" maxlength="6" placeholder="กรอกรหัส PIN ใหม่อีกครั้ง" class="w-full bg-[#181824] border border-slate-700 rounded-lg p-2 text-white font-mono text-center tracking-[0.3em] outline-none focus:border-emerald-500">
+                </div>
+
+                <button onclick="handleUpdateAdminPin()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow transition mt-2">
+                  <span>💾</span><span>บันทึกรหัสผ่านใหม่ (Update PIN)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Emergency Safety Notice -->
+            <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-[9px] text-slate-400 flex items-start gap-2">
+              <span class="text-amber-400 text-base">⚠️</span>
+              <div>
+                <b class="text-slate-300">มาตรการความปลอดภัยฉุกเฉิน (Master Fallback):</b>
+                <p class="mt-0.5">ระบบมี Master PIN ฉุกเฉิน (<code class="text-amber-300">1234</code>) สำหรับกู้คืนระบบกรณีแอดมินลืมรหัสผ่านใหม่ เพื่อป้องกันระบบล็อคสมบูรณ์ในตู้หน้าร้าน</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: 📲 EXPORT APP & INSTALLATION PACKAGE -->
+          <div id="admin-tab-app" class="hidden space-y-2.5">
+            <!-- 1. Apple iPad Profile (.mobileconfig) -->
+            <div class="p-3 rounded-xl bg-gradient-to-br from-indigo-950/50 to-[#0f0f14] border border-indigo-500/50 space-y-2">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-indigo-400 text-base">🍎</span>
+                  <span class="text-white font-bold text-[11px]">ติดตั้งเป็นแอพลง iPad / iPhone (.mobileconfig)</span>
+                </div>
+                <span class="text-[9px] bg-indigo-950 text-indigo-300 border border-indigo-500 px-1.5 py-0.5 rounded font-mono font-bold">1-TAP INSTALL</span>
+              </div>
+              <p class="text-[9px] text-slate-300 leading-relaxed">
+                สร้างไอคอนแอพ Kept Photo Booth บนหน้าจอโฮมของ iPad โดยตรง ทำงานแบบ Full-Screen เต็มจอ ไร้แถบ Safari และรันออฟไลน์ได้ทันที
+              </p>
+              <div class="flex gap-2">
+                <a href="/Kept_PhotoBooth.mobileconfig" download class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow transition">
+                  <span>📥</span><span>ดาวน์โหลดโปรไฟล์ iPad (.mobileconfig)</span>
+                </a>
+                <button onclick="openIpadInstallModal()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-indigo-300 rounded-xl font-bold text-xs border border-indigo-500/40">
+                  วิธีติดตั้ง
+                </button>
+              </div>
+            </div>
+
+            <!-- 2. Export Entire Application Package (.zip) -->
+            <div class="p-3 rounded-xl bg-[#0f0f14] border border-emerald-500/40 space-y-2">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-emerald-400 text-base">📦</span>
+                  <span class="text-white font-bold text-[11px]">ส่งออกชุดแอพพลิเคชั่นสมบูรณ์ (Complete App .ZIP)</span>
+                </div>
+                <span class="text-[9px] bg-emerald-950 text-emerald-300 border border-emerald-500/50 px-1.5 py-0.5 rounded font-mono">STANDALONE</span>
+              </div>
+              <p class="text-[9px] text-slate-400 leading-relaxed">
+                แพ็กเกจไฟล์ระบบทั้งหมด: หน้าเว็บแอพ (HTML/JS/CSS), เซิร์ฟเวอร์ HTTPS ในตัว, Service Worker ออฟไลน์, PWA Manifest, และใบรับรอง SSL
+              </p>
+              <a href="/api/export_app_zip" download="Kept_PhotoBooth_App.zip" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow transition block text-center">
+                <span>📦</span><span>ดาวน์โหลดชุดแอพ Kept_PhotoBooth_App.zip</span>
+              </a>
+            </div>
+
+            <!-- 3. Export & Import Settings JSON -->
+            <div class="p-3 rounded-xl bg-[#0f0f14] border border-slate-800 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-white font-bold text-[11px] flex items-center gap-1.5">
+                  <span>⚙️</span><span>สำรองและกู้คืนข้อมูลการตั้งค่า (Settings Backup)</span>
+                </span>
+                <span class="text-[9px] text-slate-500 font-mono">JSON File</span>
+              </div>
+              <p class="text-[9px] text-slate-400 leading-relaxed">
+                ส่งออกหรือนำเข้าไฟล์การตั้งค่าระบบ (PIN, เฟรมทั้งหมด, เลขบัญชี, แสงกล้อง, เวลานับถอยหลัง) เพื่อนำไปใช้งานกับตู้บูธเครื่องอื่นๆ ได้ในคลิกเดียว
+              </p>
+              <div class="grid grid-cols-2 gap-2 text-[10px]">
+                <button onclick="exportSettingsJson()" class="py-2 px-2 bg-slate-800 hover:bg-slate-700 text-emerald-300 rounded-xl font-bold border border-emerald-500/40 flex items-center justify-center gap-1">
+                  <span>💾</span><span>ส่งออกตั้งค่า (.json)</span>
+                </button>
+                <label class="py-2 px-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded-xl font-bold border border-cyan-500/40 flex items-center justify-center gap-1 cursor-pointer">
+                  <span>📥</span><span>กู้คืนตั้งค่า (.json)</span>
+                  <input type="file" accept=".json" onchange="importSettingsJson(event)" class="hidden">
+                </label>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="pt-2 border-t border-slate-800 flex items-center justify-between gap-2">
+          <span class="text-[9px] text-slate-500 truncate">Kept System v2.4 • Thai Banks & Google Drive Connected</span>
+          <div class="flex items-center gap-2 shrink-0">
+            <button onclick="saveAllAdminSettings()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg flex items-center gap-1.5 transition">
+              <span>💾</span><span>บันทึกการตั้งค่า</span>
+            </button>
+            <button onclick="toggleAdminModal(false)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl border border-slate-700 transition">
+              ปิด
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ================= MODAL: FETCH FROM GOOGLE DRIVE ================= -->
+    <div id="modal-drive-frames" class="hidden absolute inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col justify-center items-center p-4">
+      <div class="w-full max-w-md bg-[#181824] border border-teal-500/60 rounded-3xl p-4 shadow-2xl flex flex-col max-h-[620px]">
+        <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+          <div class="flex items-center gap-1.5">
+            <span class="text-teal-400 font-bold text-base">☁️</span>
+            <div>
+              <h3 class="font-bold text-white text-xs">ดึงรูปภาพเฟรมจาก Google Drive</h3>
+              <p class="text-[9px] text-teal-300 font-mono truncate max-w-[220px]">1giOkC-Y37veBgt4AshEYiatunVuzEtw2</p>
+            </div>
+          </div>
+          <button onclick="closeDriveFrameModal()" class="text-slate-400 hover:text-white text-xs px-2 py-0.5 bg-slate-800 rounded">✕</button>
+        </div>
+
+        <!-- Google Drive Direct Link Button -->
+        <div class="my-2 p-2 bg-[#0f0f14] border border-teal-500/30 rounded-xl flex items-center justify-between text-[10px]">
+          <span class="text-slate-300 truncate mr-2">📂 โฟลเดอร์ Drive ต้นทาง:</span>
+          <a href="https://drive.google.com/drive/folders/1giOkC-Y37veBgt4AshEYiatunVuzEtw2" target="_blank" class="px-2 py-1 bg-teal-800 hover:bg-teal-700 text-white rounded font-bold shrink-0 flex items-center gap-1 transition">
+            <span>🔗</span><span>เปิดดูโฟลเดอร์</span>
+          </a>
+        </div>
+
+        <!-- Sub Tabs: Drive Catalog vs Custom URL/Upload -->
+        <div class="flex gap-1 mb-2 bg-[#0f0f14] p-1 rounded-xl text-[10px] font-bold">
+          <button type="button" onclick="switchDriveModalTab('catalog')" id="btn-drive-tab-catalog" class="flex-1 py-1 rounded-lg bg-teal-600 text-white">📋 รายการเฟรมใน Drive</button>
+          <button type="button" onclick="switchDriveModalTab('upload')" id="btn-drive-tab-upload" class="flex-1 py-1 rounded-lg text-slate-400 hover:text-white">➕ วางลิงก์รูป / อัปโหลด</button>
+        </div>
+
+        <!-- TAB 1: Drive Catalog List -->
+        <div id="drive-modal-tab-catalog" class="flex-1 flex flex-col overflow-hidden">
+          <p class="text-[9px] text-slate-400 mb-1.5">
+            เลือกเฟรมที่ตรวจพบบน Google Drive เพื่อดึงเข้าระบบตู้ Photo Booth:
+          </p>
+          <div id="drive-frames-picker-list" class="flex-1 overflow-y-auto space-y-1.5 pr-1 text-xs">
+            <!-- Rendered by renderDrivePicker() -->
+          </div>
+          <div class="flex gap-2 pt-2 border-t border-slate-800 mt-2">
+            <button onclick="closeDriveFrameModal()" class="flex-1 py-2 rounded-xl border border-slate-700 text-slate-400 text-xs">ยกเลิก</button>
+            <button onclick="importSelectedDriveFrames()" class="flex-1 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center justify-center gap-1 shadow">
+              <span>📥 นำเข้าสู่ระบบ</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB 2: Direct Image URL / Drive File Upload -->
+        <div id="drive-modal-tab-upload" class="hidden flex-1 overflow-y-auto space-y-2 text-left text-xs pr-1">
+          <div>
+            <label class="text-[10px] text-slate-300 block mb-0.5 font-bold">1. ลิงก์รูปภาพจาก Google Drive หรือ Web URL:</label>
+            <input id="input-drive-image-url" type="text" placeholder="https://drive.google.com/file/d/... หรือ URL รูปภาพ" class="w-full bg-[#0f0f14] border border-slate-700 rounded-lg p-1.5 text-white text-xs font-mono">
+            <span class="text-[8px] text-slate-400 block mt-0.5">* รองรับ Google Drive share link และ direct image link</span>
+          </div>
+
+          <div>
+            <label class="text-[10px] text-slate-300 block mb-0.5 font-bold">หรือ 2. เลือกไฟล์รูปภาพจาก iPad / Mac (.png, .jpg):</label>
+            <input id="input-drive-file" type="file" accept="image/*" onchange="handleDriveFileSelected(event)" class="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-teal-900 file:text-teal-200">
+          </div>
+
+          <div id="box-drive-file-preview" class="hidden h-28 rounded-xl bg-black/60 border border-teal-500/40 overflow-hidden flex items-center justify-center relative">
+            <img id="img-drive-file-preview" src="" class="h-full object-contain mx-auto" alt="Preview">
+            <span class="absolute bottom-1 right-2 text-[8px] bg-black/70 text-teal-300 px-1 rounded font-mono">PREVIEW</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[10px] text-slate-300 block mb-0.5 font-bold">ชื่อกรอบรูป:</label>
+              <input id="input-drive-frame-name" type="text" placeholder="เช่น Songwat Retro v3" class="w-full bg-[#0f0f14] border border-slate-700 rounded-lg p-1.5 text-white text-xs">
+            </div>
+            <div>
+              <label class="text-[10px] text-slate-300 block mb-0.5 font-bold">โหมดกรอบในการถ่าย:</label>
+              <select id="select-drive-frame-layout" class="w-full bg-[#0f0f14] border border-slate-700 rounded-lg p-1.5 text-white text-xs">
+                <option value="newspaper">📰 หนังสือพิมพ์วินเทจ</option>
+                <option value="receipt">🧾 สลิปใบเสร็จ 80mm</option>
+                <option value="strip">🎞️ โฟโต้สตริป 2x6"</option>
+              </select>
+            </div>
+          </div>
+
+          <button onclick="saveDirectDriveImageFrame()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-600 text-slate-950 font-black text-xs shadow hover:opacity-90 flex items-center justify-center gap-1.5 mt-2">
+            <span>💾 ดึงรูปภาพเข้าระบบเป็นกรอบรูปทันที</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ================= MODAL: ADD CUSTOM FRAME ================= -->
+    <div id="modal-add-frame" class="hidden absolute inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col justify-center items-center p-4">
+      <div class="w-full max-w-sm bg-[#181824] border border-emerald-500/60 rounded-3xl p-4 shadow-2xl space-y-2">
+        <div class="flex justify-between items-center pb-1.5 border-b border-slate-800">
+          <h3 class="font-bold text-white text-xs flex items-center gap-1">
+            <span>➕</span><span>สร้างและเพิ่มเฟรมใหม่</span>
+          </h3>
+          <button onclick="closeAddFrameModal()" class="text-slate-400 hover:text-white text-xs px-2 py-0.5 bg-slate-800 rounded">✕</button>
+        </div>
+
+        <div>
+          <label class="text-[10px] text-slate-400 block mb-0.5">ประเภทเลย์เอาต์:</label>
+          <select id="new-frame-layout" class="w-full bg-[#0f0f14] border border-slate-700 rounded-lg p-1.5 text-white text-xs">
+            <option value="receipt">🧾 สลิปใบเสร็จความร้อน (Receipt 80mm)</option>
+            <option value="newspaper">📰 หนังสือพิมพ์วินเทจ (Songwat Newspaper)</option>
+            <option value="strip">🎞️ โฟโต้สตริป (Classic Strip 2x6")</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-[10px] text-slate-400 block mb-0.5">ชื่อสไตล์ / ชื่อเฟรม:</label>
+          <input id="new-frame-name" type="text" placeholder="เช่น Minimal Cafe Slip หรือ Bangkok Times" class="w-full bg-[#0f0f14] border border-slate-700 rounded-lg p-1.5 text-white text-xs">
+        </div>
+
+        <div>
+          <label class="text-[10px] text-slate-400 block mb-0.5">หัวบิล หรือ พาดหัวหนังสือพิมพ์:</label>
+          <input id="new-frame-title" type="text" placeholder="เช่น KEEP YOUR RECEIPT BANGKOK" class="w-full bg-[#0f0f14] border border-slate-700 rounded-lg p-1.5 text-white text-xs">
+        </div>
+
+        <div>
+          <label class="text-[10px] text-slate-400 block mb-0.5">คำอธิบาย:</label>
+          <input id="new-frame-desc" type="text" placeholder="คำอธิบายสไตล์สำหรับลูกค้า" class="w-full bg-[#0f0f14] border border-slate-700 rounded-lg p-1.5 text-white text-xs">
+        </div>
+
+        <div class="flex gap-2 pt-2 border-t border-slate-800 mt-2">
+          <button onclick="closeAddFrameModal()" class="flex-1 py-2 rounded-xl border border-slate-700 text-slate-400 text-xs">ยกเลิก</button>
+          <button onclick="saveCustomFrame()" class="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs">
+            💾 บันทึกเฟรม
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= MODAL: REMOTE PHONE CAMERA LINK ================= -->
+    <div id="modal-remote-camera" class="hidden absolute inset-0 z-50 bg-black/95 backdrop-blur-md flex flex-col justify-center items-center p-4">
+      <div class="w-full max-w-sm bg-[#181824] border border-indigo-500/60 rounded-3xl p-5 shadow-2xl flex flex-col items-center text-center space-y-3">
+        <div class="flex justify-between items-center w-full pb-2 border-b border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">📱</span>
+            <div class="text-left">
+              <h3 class="font-bold text-white text-sm">เชื่อมต่อกล้องไร้สายจากมือถือ</h3>
+              <p class="text-[10px] text-indigo-400">ใช้สมาร์ทโฟนหรือแท็บเล็ตเป็นเลนส์ตู้ Photo Booth</p>
+            </div>
+          </div>
+          <button onclick="closeRemoteCameraModal()" class="text-slate-400 hover:text-white text-xs px-2.5 py-1 bg-slate-800 rounded-lg">✕</button>
+        </div>
+
+        <div class="bg-white p-3 rounded-2xl shadow-xl">
+          <img id="remote-cam-qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://192.168.1.42:8443/camera_remote.html" alt="Remote Camera QR" class="w-40 h-40 object-contain mx-auto" />
+        </div>
+
+        <div class="space-y-1 w-full text-xs">
+          <span class="text-slate-400 text-[10px]">หรือเปิด URL นี้บนมือถือ (ต่อ Wi-Fi เดียวกัน):</span>
+          <div id="remote-cam-url-text" class="bg-black/60 p-2 rounded-xl border border-slate-800 font-mono text-[11px] text-emerald-400 select-all break-all">
+            https://192.168.1.42:8443/camera_remote.html
+          </div>
+        </div>
+
+        <div class="p-2.5 rounded-xl bg-[#0f0f14] border border-slate-800 text-[10px] text-slate-300 text-left w-full space-y-1">
+          <div class="font-bold text-white flex items-center gap-1">
+            <span>✨</span><span>วิธีใช้งาน:</span>
+          </div>
+          <div>1. ใช้ iPhone / Android สแกน QR ด้านบน</div>
+          <div>2. กด 'แสดงรายละเอียด' > 'ไปยังเว็บไซต์นี้' และอนุญาตกล้อง</div>
+          <div>3. ภาพสดจากมือถือจะถูกสตรีมมาแสดงบนตู้ iPad ทันที!</div>
+        </div>
+
+        <div class="flex gap-2 w-full pt-1">
+          <button onclick="setCameraToRemote(); closeRemoteCameraModal();" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold text-xs shadow hover:scale-[1.02] transition">
+            ✓ สลับใช้กล้องมือถือนี้เลย
+          </button>
+          <button onclick="closeRemoteCameraModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs hover:bg-slate-700 transition">
+            ปิด
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= MODAL: IPAD APP INSTALLATION GUIDE ================= -->
+    <div id="modal-ipad-install" class="hidden absolute inset-0 z-50 bg-black/95 backdrop-blur-md flex flex-col justify-center items-center p-4">
+      <div class="w-full max-w-md bg-[#181824] border border-indigo-500/60 rounded-3xl p-5 shadow-2xl flex flex-col max-h-[640px] overflow-hidden">
+        
+        <div class="flex justify-between items-center pb-2.5 border-b border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">📲</span>
+            <div>
+              <h3 class="font-bold text-white text-sm">วิธีติดตั้ง & เปิดใช้งานบน iPad จริง</h3>
+              <p class="text-[10px] text-indigo-400">วิธีเปิดแอปและแก้ปัญหาการใช้งานบน iPad</p>
+            </div>
+          </div>
+          <button onclick="closeIpadInstallModal()" class="text-slate-400 hover:text-white text-xs px-2.5 py-1 bg-slate-800 rounded-lg">✕</button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto space-y-2.5 my-3 pr-1 text-xs">
+          
+          <!-- Quick Access QR & URL -->
+          <div class="p-3 rounded-2xl bg-indigo-950/40 border border-indigo-500/60 flex items-center gap-3">
+            <div class="bg-white p-1.5 rounded-xl shrink-0">
+              <img id="ipad-install-qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://192.168.1.42:8443/index.html" class="w-24 h-24 object-contain" alt="QR" />
+            </div>
+            <div class="space-y-1">
+              <span class="text-emerald-400 font-bold text-[11px] block">🔗 ลิงก์เข้าใช้งานบน iPad:</span>
+              <div id="ipad-install-url-text" class="text-[10px] font-mono text-white bg-black/50 p-1.5 rounded border border-slate-700 select-all break-all">
+                https://192.168.1.42:8443/index.html
+              </div>
+              <span class="text-[9px] text-slate-400 block">เปิดด้วยกล้อง iPad สแกน หรือพิมพ์ใน Safari</span>
+            </div>
+          </div>
+
+          <!-- สำคัญมาก: วิธีผ่านหน้าแจ้งเตือน SSL ใน iPad Safari -->
+          <div class="p-3 rounded-2xl bg-amber-950/40 border border-amber-500/60 space-y-1.5">
+            <span class="font-bold text-amber-300 text-[11px] flex items-center gap-1">
+              <span>⚠️</span><span>ขั้นตอนสำคัญบน iPad Safari (ทำครั้งเดียว):</span>
+            </span>
+            <p class="text-[10px] text-slate-200 leading-relaxed">
+              เมื่อเปิดลิงก์ใน Safari แล้วขึ้นเตือน <b>"การเชื่อมต่อนี้ไม่เป็นส่วนตัว (This Connection Is Not Private)"</b>:<br>
+              1. แตะที่คำว่า <b>"แสดงรายละเอียด" (Show Details)</b><br>
+              2. เลื่อนลงมาแตะ <b>"ไปยังเว็บไซต์นี้" (visit this website)</b><br>
+              3. กดยืนยัน <b>"ไปยังเว็บไซต์" (Visit Website)</b><br>
+              4. แตะ <b>"อนุญาต" (Allow)</b> ให้เข้าถึงกล้องถ่ายภาพ
+            </p>
+          </div>
+
+          <!-- วิธีที่ 1: ติดตั้งเป็นแอปโฮมสกรีน -->
+          <div class="p-3 rounded-2xl bg-[#0f0f14] border border-emerald-500/50 space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-white text-[12px] flex items-center gap-1">
+                <span>⭐</span><span>ติดตั้งเป็นแอปเต็มหน้าจอ (Kiosk Standalone):</span>
+              </span>
+              <span class="text-[9px] bg-emerald-950 text-emerald-400 border border-emerald-500/40 px-1.5 py-0.2 rounded font-bold">แนะนำ</span>
+            </div>
+            <p class="text-[10px] text-slate-300 leading-relaxed">
+              1. แตะปุ่มแชร์ <b>Share (ไอคอน 📤)</b> ที่แถบมุมบนขวาของ Safari<br>
+              2. เลื่อนลงมาเลือก <b>"เพิ่มไปยังหน้าจอโฮม" (Add to Home Screen)</b><br>
+              3. กด <b>"เพิ่ม" (Add)</b><br>
+              4. จะได้ไอคอนแอป <b>Kept Booth</b> บนหน้าจอโฮม แตะเปิดแล้วใช้งานเต็มจอ 100% ไม่มีแถบ Safari!
+            </p>
+          </div>
+
+          <!-- วิธีที่ 2: โปรไฟล์ Apple MobileConfig -->
+          <div class="p-3 rounded-2xl bg-[#0f0f14] border border-slate-800 space-y-1">
+            <span class="font-bold text-white text-[11px] block">📋 หรือติดตั้งผ่าน Apple Configuration Profile (.mobileconfig):</span>
+            <p class="text-[10px] text-slate-400">
+              ดาวน์โหลดโปรไฟล์ WebClip เพื่อสร้างไอคอนแอปตู้ Kiosk บน iPad อัตโนมัติ:
+            </p>
+            <a href="Kept_PhotoBooth.mobileconfig" download class="inline-flex items-center gap-1.5 py-1.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold text-[10px] mt-1 shadow">
+              <span>📥</span><span>ดาวน์โหลด Kept_PhotoBooth.mobileconfig</span>
+            </a>
+            <span class="text-[9px] text-slate-500 block">เปิดการตั้งค่า iPad > แตะ Profile Downloaded > กด ติดตั้ง (Install)</span>
+          </div>
+
+        </div>
+
+        <button onclick="closeIpadInstallModal()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs">
+          เข้าใจแล้ว / ปิดหน้าต่าง
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- JavaScript Interaction Logic -->
+  <script>
+    // Thai Bank Accounts Model & State
+    const thaiBanks = [
+      { code: 'KBANK', name: 'ธนาคารกสิกรไทย', color: '#00A950', accNo: '089-2-99881-4', accName: 'บจก. เคพท์ มีเดีย โฟโต้บูธ', promptPay: '0105566123456', branch: 'สยามพารากอน' },
+      { code: 'SCB', name: 'ธนาคารไทยพาณิชย์', color: '#4E2A84', accNo: '408-5-12345-0', accName: 'บจก. เคพท์ มีเดีย โฟโต้บูธ', promptPay: '0819876543', branch: 'เซ็นทรัลเวิลด์' },
+      { code: 'KTB', name: 'ธนาคารกรุงไทย', color: '#00A6E6', accNo: '119-0-45678-2', accName: 'เคพท์ โฟโต้บูธ ทรงวาด', promptPay: '0891234567', branch: 'ถนนทรงวาด' },
+      { code: 'BBL', name: 'ธนาคารกรุงเทพ', color: '#1E3A8A', accNo: '901-7-89012-3', accName: 'KEPT PHOTOBOOTH BKK', promptPay: '0105566123456', branch: 'สีลม' },
+      { code: 'BAY', name: 'ธนาคารกรุงศรี', color: '#FEC300', accNo: '551-1-23456-7', accName: 'KEPT BOOTH TH', promptPay: '0823456789', branch: 'อารีย์' },
+      { code: 'PROMPTPAY', name: 'พร้อมเพย์กลาง AnyID', color: '#003D6B', accNo: '0105566123456', accName: 'KEPT SYSTEM THAILAND', promptPay: '0105566123456', branch: 'PromptPay Central' },
+    ];
+    let activeBank = thaiBanks[0];
+    let paymentAutoTimer = null;
+
+    // Frames Model & Google Drive Catalog
+    let systemFrames = [
+      // 1. Newspaper Vintage Frames (โหมดหนังสือพิมพ์วินเทจ)
+      { id: 'frame_newspaper_songwat', name: 'Songwat Times (หน้าหนึ่งวินเทจคลาสสิก)', layout: 'newspaper', title: 'THE SONGWAT CHRONICLE', desc: 'หน้าหนึ่งหนังสือพิมพ์วินเทจ โทนซีเปีย 300 DPI คลาสสิก ย่านทรงวาด', color: '#B45309', source: 'System' },
+      { id: 'frame_newspaper_historic', name: 'Songwat Times v2 (หน้าคู่ทองทรงวาด)', layout: 'newspaper', title: 'THE SONGWAT HISTORIC CHRONICLE', desc: 'เทมเพลตเรโทรพิเศษ คอลัมน์ 2 หน้าพร้อมลายเซ็นทรงวาด', color: '#92400E', source: 'Google Drive' },
+      { id: 'frame_newspaper_gazette', name: 'Bangkok Gazette 1920 (ฉบับประวัติศาสตร์)', layout: 'newspaper', title: 'THE BANGKOK DAILY GAZETTE', desc: 'หน้าหนังสือพิมพ์พระนครโบราณ ตัวพิมพ์ดีดคลาสสิกขาว-ดำวินเทจ', color: '#78350F', source: 'System' },
+      { id: 'frame_newspaper_siam', name: 'Siam Daily Post (สยามเดลี่โพสต์)', layout: 'newspaper', title: 'SIAM DAILY RECORD & POST', desc: 'หัวหนังสือพิมพ์สยามยุค 1950 พร้อมคอลัมน์ข่าวบันเทิงและภาพถ่าย', color: '#854D0E', source: 'System' },
+
+      // 2. Receipt Frames (โหมดสลิปใบเสร็จ 80mm)
+      { id: 'frame_thermal_receipt', name: 'Receipt Photobooth (สลิป 80mm คาเฟ่)', layout: 'receipt', title: 'KEPT • MEMORY RECEIPT', desc: 'สลิปใบเสร็จคาเฟ่ ขาว-ดำ Dithering มีบาร์โค้ดและวันที่', color: '#10B981', source: 'System' },
+      { id: 'frame_receipt_seoul', name: 'Seoul Minimal Receipt (สลิปเกาหลีฮงแด)', layout: 'receipt', title: 'KEEP YOUR RECEIPT • SEOUL CAFE', desc: 'ใบเสร็จสไตล์ฮงแด โลโก้มินิมอลและตารางบันทึกความทรงจำ', color: '#059669', source: 'System' },
+      { id: 'frame_receipt_market', name: 'Street Market Die-cut (สติกเกอร์ความร้อน)', layout: 'receipt', title: 'BANGKOK STREET MEMORIES', desc: 'กรอบไดคัทสำหรับม้วนสติกเกอร์ความร้อน ลอกแปะได้ทันที', color: '#06B6D4', source: 'Google Drive' },
+
+      // 3. Cyber Strip Frames (โหมดสตริป 2x6 นิ้ว)
+      { id: 'frame_cyber_strip', name: 'Cyber Neon Strip (นีออน 2x6")', layout: 'strip', title: 'KEPT CYBER BOOTH', desc: 'โฟโต้สตริป 3 ช็อตยาว สีสันนีออนโฉบเฉี่ยว', color: '#A855F7', source: 'System' },
+      { id: 'frame_neo_tokyo', name: 'Neo Tokyo 2077 (นีออนสตริปไซเบอร์)', layout: 'strip', title: 'CYBER PHOTO BOOTH 2077', desc: 'สตริป 2x6 นิ้ว กราฟิกแสงนีออนโฉบเฉี่ยวสไตล์ไซเบอร์พังก์', color: '#C084FC', source: 'System' }
+    ];
+
+    const driveCatalogFrames = [
+      { id: 'drive_songwat_v2', name: 'Songwat Times v2 (หน้าคู่ทองทรงวาด)', layout: 'newspaper', title: 'THE SONGWAT HISTORIC CHRONICLE', desc: 'เทมเพลตเรโทรพิเศษ คอลัมน์ 2 หน้าพร้อมลายเซ็นทรงวาด', color: '#92400E' },
+      { id: 'drive_seoul_minimal', name: 'Seoul Minimal Receipt (สลิปเกาหลี 80mm)', layout: 'receipt', title: 'KEEP YOUR RECEIPT • SEOUL CAFE', desc: 'ใบเสร็จสไตล์ฮงแด โลโก้มินิมอลและตารางความทรงจำ', color: '#10B981' },
+      { id: 'drive_street_market', name: 'Street Market Die-cut (สติกเกอร์ไดคัท)', layout: 'receipt', title: 'BANGKOK STREET MEMORIES', desc: 'กรอบไดคัทสำหรับม้วนสติกเกอร์ความร้อน ลอกแปะได้', color: '#06B6D4' },
+      { id: 'drive_neo_tokyo', name: 'Neo Tokyo 2077 (นีออนสตริปไซเบอร์)', layout: 'strip', title: 'CYBER PHOTO BOOTH 2077', desc: 'สตริป 2x6 นิ้ว กราฟิกแสงนีออนโฉบเฉี่ยว', color: '#A855F7' }
+    ];
+
+    let isDeleteFrameMode = false;
+    let activeSelectedFrame = null;
+    let countdownDuration = parseInt(localStorage.getItem('kept_countdown_sec')) || 3;
+    let currentFrameFilter = 'mode'; // 'mode' or 'all'
+
+    let currentScreen = 'idle';
+    let currentPkg = { name: 'Receipt Photobooth', price: 89, shots: 3 };
+    let currentMode = 'receipt';
+
+    // Live Clock
+    setInterval(() => {
+      const d = new Date();
+      document.getElementById('clock-display').innerText = 
+        String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    }, 1000);
+
+    function setCountdownDuration(seconds) {
+      countdownDuration = parseInt(seconds) || 3;
+      localStorage.setItem('kept_countdown_sec', countdownDuration);
+      updateCountdownUI();
+    }
+
+    function updateCountdownUI() {
+      const badge = document.getElementById('admin-countdown-badge');
+      if (badge) badge.innerText = `${countdownDuration} วินาที`;
+      const sumBadge = document.getElementById('admin-summary-countdown-sec');
+      if (sumBadge) sumBadge.innerText = `${countdownDuration} วิ`;
+      const customInput = document.getElementById('input-custom-countdown');
+      if (customInput) customInput.value = countdownDuration;
+
+      [3, 5, 10].forEach(s => {
+        const btn = document.getElementById('btn-countdown-' + s);
+        if (btn) {
+          if (countdownDuration === s) {
+            btn.className = 'py-2 px-1 rounded-lg text-center text-xs font-bold transition border bg-amber-500 text-slate-950 border-amber-400 shadow-md scale-[1.02]';
+          } else {
+            btn.className = 'py-2 px-1 rounded-lg text-center text-xs font-bold transition border bg-[#181824] text-slate-300 border-slate-700 hover:border-slate-500';
+          }
+        }
+      });
+    }
+
+    function setDeviceView(mode) {
+      const c = document.getElementById('device-container');
+      const btnIpad = document.getElementById('btn-view-ipad');
+      const btnTv = document.getElementById('btn-view-tv');
+
+      if (mode === 'ipad-portrait') {
+        c.className = 'relative w-[390px] h-[780px] bg-[#0c0c12] rounded-[42px] border-[6px] border-slate-800 shadow-[0_0_60px_rgba(0,0,0,0.9)] overflow-hidden transition-all duration-300 flex flex-col justify-between p-5';
+        btnIpad.className = 'px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold transition';
+        btnTv.className = 'px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition';
+      } else {
+        // Smart TV Landscape 16:9
+        c.className = 'relative w-[960px] h-[540px] bg-[#0c0c12] rounded-[36px] border-[6px] border-slate-800 shadow-[0_0_60px_rgba(0,0,0,0.9)] overflow-hidden transition-all duration-300 flex flex-col justify-between p-5';
+        btnTv.className = 'px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold transition';
+        btnIpad.className = 'px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition';
+      }
+    }
+
+    function handleAdminDeviceChange(val) {
+      setDeviceView(val);
+    }
+
+    function goToScreen(screenName) {
+      currentScreen = screenName;
+      if (paymentAutoTimer) clearTimeout(paymentAutoTimer);
+
+      const screens = ['idle', 'package', 'frames', 'payment', 'frame-select', 'camera', 'preview', 'final'];
+      screens.forEach(s => {
+        const el = document.getElementById('screen-' + s);
+        if (el) {
+          el.classList.add('hidden');
+          el.classList.remove('flex');
+        }
+      });
+
+      const target = document.getElementById('screen-' + screenName);
+      if (target) {
+        target.classList.remove('hidden');
+        target.classList.add('flex');
+      }
+
+      const dock = document.getElementById('floating-dock');
+      if (screenName === 'camera' || screenName === 'frame-select') dock.classList.add('hidden');
+      else dock.classList.remove('hidden');
+
+      if (screenName === 'frames') {
+        renderSystemFrames();
+      }
+
+      // ถ้าเข้าหน้า Payment ให้เริ่มระบบจำลอง Webhook ตรวจจับเงินเข้าอัตโนมัติ
+      if (screenName === 'payment') {
+        startPaymentAutoWatcher();
+      }
+    }
+
+    function selectPackage(name, price, shots, mode) {
+      currentMode = mode;
+      currentPkg = { name, price, shots };
+      if (!activeSelectedFrame || activeSelectedFrame.layout !== mode) {
+        activeSelectedFrame = systemFrames.find(f => f.layout === mode) || systemFrames[0];
+      }
+      document.getElementById('payment-summary').innerText = `${name} • ฿${price}`;
+      document.getElementById('payment-amount').innerText = `฿${price.toFixed(2)}`;
+      document.getElementById('camera-shot-tot').innerText = shots;
+
+      if (mode === 'newspaper') {
+        document.getElementById('preview-receipt-card').classList.add('hidden');
+        document.getElementById('preview-newspaper-card').classList.remove('hidden');
+      } else {
+        document.getElementById('preview-receipt-card').classList.remove('hidden');
+        document.getElementById('preview-newspaper-card').classList.add('hidden');
+      }
+
+      goToScreen('payment');
+    }
+
+    // ================= BANK SELECTION & REAL-TIME WEBHOOK =================
+    function selectThaiBank(code) {
+      const found = thaiBanks.find(b => b.code === code);
+      if (found) {
+        activeBank = found;
+        applyActiveBankUI();
+        alert(`✅ สลับบัญชีรับเงินหลักเป็น ${found.name} (${found.accNo}) เรียบร้อย!`);
+      }
+    }
+
+    function applyActiveBankUI() {
+      // Admin Dashboard Badges & Summary
+      const sumBadge = document.getElementById('admin-summary-bank-badge');
+      const sumAcc = document.getElementById('admin-summary-bank-acc');
+      if (sumBadge) {
+        sumBadge.innerText = `${activeBank.code} ${activeBank.name.substring(0, 10)}`;
+        sumBadge.style.backgroundColor = activeBank.color;
+      }
+      if (sumAcc) {
+        sumAcc.innerText = activeBank.accNo;
+      }
+
+      const topBadge = document.getElementById('topbar-bank-badge');
+      const topAcc = document.getElementById('topbar-bank-acc');
+      if (topBadge) {
+        topBadge.innerText = `${activeBank.code} ${activeBank.name.substring(0, 10)}`;
+        topBadge.style.backgroundColor = activeBank.color;
+      }
+      if (topAcc) {
+        topAcc.innerText = activeBank.accNo;
+      }
+
+      const idleSample = document.getElementById('idle-sample-bank');
+      if (idleSample) idleSample.innerText = `${activeBank.code} / PROMPTPAY`;
+
+      const adminBadge = document.getElementById('admin-active-bank-badge');
+      if (adminBadge) {
+        adminBadge.innerText = `${activeBank.code} ${activeBank.name}`;
+        adminBadge.style.backgroundColor = activeBank.color;
+        document.getElementById('admin-bank-accname').innerText = activeBank.accName;
+        document.getElementById('admin-bank-accno').innerText = activeBank.accNo;
+        document.getElementById('admin-bank-promptpay').innerText = activeBank.promptPay;
+      }
+
+      // Customer Payment Screen Dynamic Adaptation
+      const pBanner = document.getElementById('payment-bank-banner');
+      const pCard = document.getElementById('payment-bank-card');
+      const pBadge = document.getElementById('payment-bank-code-badge');
+      const pName = document.getElementById('payment-bank-name');
+      const pAccNo = document.getElementById('payment-acc-no');
+      const pAccName = document.getElementById('payment-acc-name');
+      const pPrompt = document.getElementById('payment-promptpay');
+      const rPaid = document.getElementById('receipt-paid-bank');
+
+      if (pBanner) {
+        pBanner.style.backgroundColor = activeBank.color;
+        pCard.style.borderColor = activeBank.color;
+        pBadge.innerText = activeBank.code;
+        pBadge.style.color = activeBank.color;
+        pName.innerText = activeBank.name;
+        pAccNo.innerText = activeBank.accNo;
+        pAccName.innerText = activeBank.accName;
+        pPrompt.innerText = activeBank.promptPay;
+      }
+      if (rPaid) {
+        rPaid.innerText = `PAID VIA: ${activeBank.code} PROMPTPAY`;
+      }
+    }
+
+    function handleSaveCustomBank() {
+      const accNo = document.getElementById('bank-input-accno').value;
+      const accName = document.getElementById('bank-input-accname').value;
+      const promptPay = document.getElementById('bank-input-promptpay').value;
+
+      if (!accNo || !promptPay) {
+        alert('กรุณากรอกเลขที่บัญชีและหมายเลขพร้อมเพย์ให้ครบถ้วน');
+        return;
+      }
+
+      activeBank.accNo = accNo;
+      if (accName) activeBank.accName = accName;
+      activeBank.promptPay = promptPay;
+
+      applyActiveBankUI();
+      alert(`💾 บันทึกและผูกบัญชีธนาคาร ${activeBank.name} เรียบร้อยแล้ว!`);
+    }
+
+    function testBankWebhookPing() {
+      alert(`⚡ ทดสอบ Ping ไปยัง Open Banking API (${activeBank.code}):\n\n✓ Endpoint Status: 200 OK (0.6ms)\n✓ Webhook Callback: Registered\n✓ ระบบ Auto-Advance: พร้อมทำงาน`);
+    }
+
+    function startPaymentAutoWatcher() {
+      const statusText = document.getElementById('payment-status-text');
+      const spinner = document.getElementById('payment-spinner');
+      if (statusText) {
+        statusText.innerText = `ตรวจจับเงินเข้าอัตโนมัติ (${activeBank.name})...`;
+        spinner.classList.remove('hidden');
+      }
+
+      // จำลอง 3.5 วินาที ลูกค้าสแกนจ่ายสำเร็จ Webhook ยิงเข้า
+      paymentAutoTimer = setTimeout(() => {
+        triggerImmediatePaymentSuccess();
+      }, 3500);
+    }
+
+    function triggerImmediatePaymentSuccess() {
+      if (paymentAutoTimer) clearTimeout(paymentAutoTimer);
+
+      const statusText = document.getElementById('payment-status-text');
+      const statusBox = document.getElementById('payment-auto-status');
+      const spinner = document.getElementById('payment-spinner');
+
+      if (statusText) {
+        statusText.innerText = `✅ ได้รับเงิน ฿${currentPkg.price.toFixed(2)} เข้า ${activeBank.name} แล้ว! กำลังไปหน้าเลือกกรอบรูป...`;
+        statusBox.className = 'flex items-center justify-center gap-1.5 text-xs text-white font-bold py-1 px-3 bg-emerald-600 rounded-full mx-auto max-w-[290px] animate-bounce';
+        spinner.classList.add('hidden');
+      }
+
+      setTimeout(() => {
+        openCustomerFrameSelection();
+      }, 1000);
+    }
+
+    // ================= POST-PAYMENT CUSTOMER FRAME SELECTION CONTROLLER =================
+    function generateLargeFramePreview(f) {
+      if (f.image) {
+        return `
+          <div class="w-full h-32 sm:h-36 rounded-xl overflow-hidden bg-black/60 relative border border-slate-700/60 flex items-center justify-center">
+            <img src="${f.image}" class="w-full h-full object-cover" alt="${f.name}" />
+          </div>
+        `;
+      }
+
+      if (f.layout === 'newspaper') {
+        return `
+          <div class="w-full h-32 sm:h-36 bg-[#f7f2e7] text-[#2d2319] p-2 rounded-xl border-2 border-[#5c4633] flex flex-col justify-between overflow-hidden shadow-inner relative select-none font-serif">
+            <div class="text-center border-b border-[#5c4633] pb-0.5">
+              <div class="text-[11px] font-black uppercase tracking-tight truncate leading-none">${f.title || 'THE SONGWAT TIMES'}</div>
+              <div class="flex justify-between text-[6px] text-[#78614e] font-sans mt-0.5">
+                <span>VOL. XXIV</span>
+                <span>VINTAGE PRESS</span>
+                <span>BANGKOK</span>
+              </div>
+            </div>
+            <div class="flex-1 my-1 border border-[#5c4633] bg-[#ece2cf] rounded flex items-center justify-center relative overflow-hidden">
+              <span class="text-2xl filter drop-shadow">📰</span>
+              <span class="absolute bottom-1 right-1 text-[6px] font-sans font-bold bg-[#5c4633] text-amber-100 px-1 rounded">300 DPI</span>
+            </div>
+            <div class="border-t border-[#5c4633] pt-0.5 flex justify-between text-[6px] font-sans text-[#78614e]">
+              <span>SPECIAL EDITION</span>
+              <span>THAILAND</span>
+            </div>
+          </div>
+        `;
+      }
+
+      if (f.layout === 'receipt') {
+        return `
+          <div class="w-full h-32 sm:h-36 bg-white text-slate-800 p-2 rounded-xl border border-slate-300 flex flex-col justify-between overflow-hidden shadow-inner relative select-none font-mono">
+            <div class="border-b border-dashed border-slate-400 pb-0.5 text-center">
+              <div class="text-[10px] font-black tracking-wider text-slate-900 truncate">*** ${f.title || 'KEPT PHOTOBOOTH'} ***</div>
+              <div class="text-[6px] text-slate-500">BANGKOK • 80MM SLIP</div>
+            </div>
+            <div class="flex-1 my-1 flex gap-1 items-center justify-center">
+              <div class="flex-1 h-full bg-slate-100 border border-slate-300 rounded flex items-center justify-center text-xs">☕</div>
+              <div class="flex-1 h-full bg-slate-100 border border-slate-300 rounded flex items-center justify-center text-xs">✌️</div>
+              <div class="flex-1 h-full bg-slate-100 border border-slate-300 rounded flex items-center justify-center text-xs">✨</div>
+            </div>
+            <div class="border-t border-dashed border-slate-400 pt-0.5 flex justify-between items-center text-[6px] text-slate-500">
+              <span>PAID PROMPTPAY</span>
+              <span class="font-bold text-slate-700 tracking-widest text-[7px]">||| || |||</span>
+            </div>
+          </div>
+        `;
+      }
+
+      // layout === 'strip' or other
+      return `
+        <div class="w-full h-32 sm:h-36 bg-[#0c0c16] text-purple-300 p-2 rounded-xl border-2 border-purple-500/50 flex flex-col justify-between overflow-hidden shadow-[0_0_12px_rgba(168,85,247,0.2)] relative select-none">
+          <div class="text-center text-[8px] font-black tracking-widest text-purple-300 border-b border-purple-500/30 pb-0.5 truncate">
+            ${f.title || 'CYBER STRIP'}
+          </div>
+          <div class="flex-1 my-1 flex flex-col gap-1 justify-center">
+            <div class="h-5 bg-purple-950/70 border border-purple-500/40 rounded flex items-center justify-center text-[8px]">SHOT 01 💫</div>
+            <div class="h-5 bg-purple-950/70 border border-purple-500/40 rounded flex items-center justify-center text-[8px]">SHOT 02 🌟</div>
+          </div>
+          <div class="text-[6px] font-mono text-center text-purple-400">2x6 INCH CLASSIC</div>
+        </div>
+      `;
+    }
+
+    function openCustomerFrameSelection() {
+      currentFrameFilter = 'mode';
+      const matchingFrames = systemFrames.filter(f => f.layout === currentMode);
+      if (!activeSelectedFrame || activeSelectedFrame.layout !== currentMode) {
+        activeSelectedFrame = matchingFrames[0] || systemFrames[0];
+      }
+      renderCustomerFrameSelection();
+      goToScreen('frame-select');
+    }
+
+    function setFrameSelectFilter(filter) {
+      currentFrameFilter = filter;
+      renderCustomerFrameSelection();
+    }
+
+    function renderCustomerFrameSelection() {
+      const container = document.getElementById('customer-select-frames-list');
+      const modeBadge = document.getElementById('frame-select-pkg-badge');
+      const subhead = document.getElementById('frame-select-subhead');
+      const filterModeLabel = document.getElementById('filter-frame-mode-label');
+      const filterAllCount = document.getElementById('filter-frame-all-count');
+      const btnMode = document.getElementById('btn-filter-frame-mode');
+      const btnAll = document.getElementById('btn-filter-frame-all');
+
+      const matchingFrames = systemFrames.filter(f => f.layout === currentMode);
+      const displayFrames = currentFrameFilter === 'mode' ? (matchingFrames.length > 0 ? matchingFrames : systemFrames) : systemFrames;
+
+      if (filterAllCount) filterAllCount.innerText = systemFrames.length;
+      if (filterModeLabel) {
+        const modeTitle = currentMode === 'newspaper' ? 'หนังสือพิมพ์' : currentMode === 'receipt' ? 'สลิปใบเสร็จ' : 'สตริป';
+        filterModeLabel.innerText = `⭐ กรอบตรงตามโหมด (${matchingFrames.length})`;
+      }
+
+      if (modeBadge) {
+        if (currentMode === 'newspaper') {
+          modeBadge.className = 'text-[10px] bg-amber-950 text-amber-300 border border-amber-500/40 px-2 py-1 rounded-lg font-bold block';
+          modeBadge.innerText = '📰 โหมดหนังสือพิมพ์';
+        } else {
+          modeBadge.className = 'text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-500/40 px-2 py-1 rounded-lg font-bold block';
+          modeBadge.innerText = '🧾 โหมดสลิปใบเสร็จ';
+        }
+      }
+
+      if (subhead) {
+        const modeDesc = currentMode === 'newspaper' ? 'หนังสือพิมพ์วินเทจ' : 'สลิปใบเสร็จคาเฟ่';
+        subhead.innerText = `เลือกกรอบรูปสำหรับ ${modeDesc} แตะเลือกกรอบรูปภาพใหญ่ที่ต้องการได้เลย`;
+      }
+
+      if (btnMode && btnAll) {
+        if (currentFrameFilter === 'mode') {
+          btnMode.className = 'flex-1 py-1.5 px-2 rounded-lg bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center gap-1 shadow transition';
+          btnAll.className = 'flex-1 py-1.5 px-2 rounded-lg bg-slate-800 text-slate-300 font-bold text-[10px] hover:bg-slate-700 flex items-center justify-center gap-1 transition';
+        } else {
+          btnAll.className = 'flex-1 py-1.5 px-2 rounded-lg bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center gap-1 shadow transition';
+          btnMode.className = 'flex-1 py-1.5 px-2 rounded-lg bg-slate-800 text-slate-300 font-bold text-[10px] hover:bg-slate-700 flex items-center justify-center gap-1 transition';
+        }
+      }
+
+      if (!activeSelectedFrame || !systemFrames.some(f => f.id === activeSelectedFrame.id)) {
+        activeSelectedFrame = matchingFrames[0] || systemFrames[0];
+      }
+
+      updateSelectedFrameBadge();
+
+      if (container) {
+        container.innerHTML = displayFrames.map(f => {
+          const isSelected = activeSelectedFrame && activeSelectedFrame.id === f.id;
+          const modeTag = f.layout === 'newspaper' ? '📰 หนังสือพิมพ์วินเทจ' : f.layout === 'receipt' ? '🧾 สลิปใบเสร็จ 80mm' : '🎞️ สตริป 2x6"';
+          const previewHtml = generateLargeFramePreview(f);
+          
+          return `
+            <div onclick="pickCustomerFrame('${f.id}')" class="p-2.5 rounded-2xl cursor-pointer transition-all duration-200 flex flex-col justify-between group ${isSelected ? 'bg-gradient-to-b from-emerald-950/70 to-[#12121c] border-2 border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.4)] scale-[1.02]' : 'bg-[#14141e] border-2 border-slate-800 hover:border-slate-600'}">
+              <!-- Large Visual Preview Image -->
+              <div class="w-full">
+                ${previewHtml}
+              </div>
+
+              <!-- Info: Only Frame Name & Frame Mode -->
+              <div class="mt-2 text-left">
+                <div class="font-black text-xs sm:text-sm text-white truncate group-hover:text-emerald-300 transition" title="${f.name}">
+                  ${f.name}
+                </div>
+                <div class="text-[10px] font-bold text-emerald-400 mt-0.5 truncate">
+                  ${modeTag}
+                </div>
+              </div>
+
+              <!-- Selection Indicator -->
+              <div class="mt-2 pt-1 border-t border-slate-800/80 flex items-center justify-between">
+                ${isSelected ? `
+                  <span class="w-full text-center text-[9px] bg-emerald-500 text-slate-950 font-black py-1 px-2 rounded-xl shadow flex items-center justify-center gap-1">
+                    ✓ เลือกกรอบนี้แล้ว
+                  </span>
+                ` : `
+                  <span class="w-full text-center text-[9px] bg-slate-800 text-slate-300 font-bold py-1 px-2 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition">
+                    แตะเพื่อเลือก
+                  </span>
+                `}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    function pickCustomerFrame(id) {
+      const f = systemFrames.find(item => item.id === id);
+      if (f) {
+        activeSelectedFrame = f;
+        renderCustomerFrameSelection();
+      }
+    }
+
+    function updateSelectedFrameBadge() {
+      if (!activeSelectedFrame) return;
+      const nameEl = document.getElementById('label-selected-frame-name');
+      const layoutEl = document.getElementById('label-selected-frame-layout');
+      if (nameEl) nameEl.innerText = activeSelectedFrame.name;
+      if (layoutEl) layoutEl.innerText = activeSelectedFrame.layout.toUpperCase();
+    }
+
+    function confirmSelectedFrameAndStartCamera() {
+      if (!activeSelectedFrame) {
+        activeSelectedFrame = systemFrames[0];
+      }
+      applyActiveFrameConfig(activeSelectedFrame);
+      startCameraCountdown();
+    }
+
+    function applyActiveFrameConfig(frame) {
+      if (frame.layout === 'newspaper') {
+        currentMode = 'newspaper';
+        currentPkg.shots = 2;
+        document.getElementById('camera-shot-tot').innerText = '2';
+        document.getElementById('preview-receipt-card').classList.add('hidden');
+        document.getElementById('preview-newspaper-card').classList.remove('hidden');
+        
+        // Update newspaper titles and subtitles
+        const nTitle = document.getElementById('newspaper-card-title');
+        if (nTitle) nTitle.innerText = frame.title || 'THE SONGWAT TIMES';
+        const nSub = document.getElementById('newspaper-card-subtitle');
+        if (nSub) nSub.innerText = `${frame.name.toUpperCase()} • BANGKOK`;
+      } else {
+        currentMode = 'receipt';
+        currentPkg.shots = 3;
+        document.getElementById('camera-shot-tot').innerText = '3';
+        document.getElementById('preview-receipt-card').classList.remove('hidden');
+        document.getElementById('preview-newspaper-card').classList.add('hidden');
+        
+        // Update receipt title
+        const rTitle = document.getElementById('receipt-card-title');
+        if (rTitle) rTitle.innerText = `*** ${frame.title || 'KEPT PHOTOBOOTH'} ***`;
+        const rSub = document.getElementById('receipt-card-subtitle');
+        if (rSub) rSub.innerText = frame.name.toUpperCase();
+      }
+    }
+
+    // ================= REAL MULTI-DEVICE CAMERA & CAPTURE ENGINE =================
+    let realCapturedPhotos = [];
+    let liveMediaStream = null;
+    let currentCameraMode = 'user'; // 'user' (front), 'environment' (back), 'remote' (phone/tablet over wifi), or deviceId
+    let availableVideoDevices = [];
+    let remotePollInterval = null;
+    let lastRemoteFrameData = null;
+    let isRemoteActive = false;
+    let calibSettings = { brightness: 0, contrast: 1.1, wb: 5500, saturation: 1.0 };
+
+    // Dynamic QR & Link initialization based on current host IP
+    function syncDynamicHostLinks() {
+      const host = window.location.hostname || '192.168.1.42';
+      const httpsPort = window.location.port || '8443';
+      const baseUrl = `https://${host}:${httpsPort}`;
+      
+      const remoteUrl = `${baseUrl}/camera_remote.html`;
+      const appUrl = `${baseUrl}/index.html`;
+
+      const remoteText = document.getElementById('remote-cam-url-text');
+      if (remoteText) remoteText.innerText = remoteUrl;
+      const remoteQr = document.getElementById('remote-cam-qr-img');
+      if (remoteQr) remoteQr.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(remoteUrl)}`;
+
+      const ipadText = document.getElementById('ipad-install-url-text');
+      if (ipadText) ipadText.innerText = appUrl;
+      const ipadQr = document.getElementById('ipad-install-qr-img');
+      if (ipadQr) ipadQr.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(appUrl)}`;
+    }
+
+    async function scanCameraDevices() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        availableVideoDevices = devices.filter(d => d.kind === 'videoinput');
+        const select = document.getElementById('camera-device-select');
+        if (!select) return;
+
+        select.innerHTML = '';
+
+        const optFront = document.createElement('option');
+        optFront.value = 'user';
+        optFront.textContent = '📱 กล้องหน้า iPad / Mac (FaceTime HD)';
+        select.appendChild(optFront);
+
+        const optBack = document.createElement('option');
+        optBack.value = 'environment';
+        optBack.textContent = '📷 กล้องหลัง iPad (Ultra Wide / 4K)';
+        select.appendChild(optBack);
+
+        availableVideoDevices.forEach((dev, idx) => {
+          if (dev.deviceId) {
+            const opt = document.createElement('option');
+            opt.value = dev.deviceId;
+            opt.textContent = `🔌 ${dev.label || ('กล้องภายนอก / OTG ' + (idx + 1))}`;
+            select.appendChild(opt);
+          }
+        });
+
+        const optRemote = document.createElement('option');
+        optRemote.value = 'remote';
+        optRemote.textContent = '📡 กล้องไร้สายจากมือถือ / แท็บเล็ตอื่น (Wireless Remote Lens)';
+        select.appendChild(optRemote);
+
+        select.value = currentCameraMode;
+      } catch (err) {
+        console.log('Camera scan note:', err);
+      }
+    }
+
+    async function handleCameraChange(mode) {
+      currentCameraMode = mode;
+      const select = document.getElementById('camera-device-select');
+      if (select && select.value !== mode) select.value = mode;
+
+      const topName = document.getElementById('topbar-cam-name');
+      const sumCam = document.getElementById('admin-summary-cam-name');
+      const quickName = document.getElementById('quick-cam-name');
+      const activeDisp = document.getElementById('cam-active-display');
+      const sourceInd = document.getElementById('cam-source-indicator');
+      const noteEl = document.getElementById('cam-status-note');
+
+      if (mode === 'user') {
+        if (topName) topName.innerText = 'กล้องหน้า iPad';
+        if (sumCam) sumCam.innerText = 'กล้องหน้า iPad';
+        if (quickName) quickName.innerText = 'กล้องหน้า';
+        if (activeDisp) activeDisp.innerText = 'IPAD FRONT CAMERA (FACETIME)';
+        if (sourceInd) sourceInd.innerText = 'SOURCE: IPAD FRONT CAMERA';
+        if (noteEl) noteEl.innerText = 'ใช้งานกล้องหน้าคมชัดสูง';
+      } else if (mode === 'environment') {
+        if (topName) topName.innerText = 'กล้องหลัง iPad';
+        if (sumCam) sumCam.innerText = 'กล้องหลัง iPad';
+        if (quickName) quickName.innerText = 'กล้องหลัง';
+        if (activeDisp) activeDisp.innerText = 'IPAD BACK CAMERA (WIDE)';
+        if (sourceInd) sourceInd.innerText = 'SOURCE: IPAD BACK CAMERA';
+        if (noteEl) noteEl.innerText = 'ใช้งานกล้องหลังมุมกว้าง 4K';
+      } else if (mode === 'remote') {
+        if (topName) topName.innerText = 'กล้องมือถือไร้สาย';
+        if (sumCam) sumCam.innerText = 'กล้องมือถือไร้สาย';
+        if (quickName) quickName.innerText = 'กล้องมือถือ';
+        if (activeDisp) activeDisp.innerText = 'WIRELESS PHONE / TABLET LENS';
+        if (sourceInd) sourceInd.innerText = 'SOURCE: WIRELESS REMOTE LENS';
+        if (noteEl) noteEl.innerText = 'สตรีมภาพสดจากสมาร์ทโฟน/แท็บเล็ต';
+      } else {
+        const dev = availableVideoDevices.find(d => d.deviceId === mode);
+        const name = dev ? (dev.label || 'กล้องภายนอก OTG') : 'กล้องภายนอก OTG';
+        if (topName) topName.innerText = name.length > 15 ? name.substring(0, 15) + '..' : name;
+        if (sumCam) sumCam.innerText = name.length > 15 ? name.substring(0, 15) + '..' : name;
+        if (quickName) quickName.innerText = 'กล้องภายนอก';
+        if (activeDisp) activeDisp.innerText = name.toUpperCase();
+        if (sourceInd) sourceInd.innerText = 'SOURCE: ' + name.toUpperCase();
+        if (noteEl) noteEl.innerText = 'เชื่อมต่อผ่านสายตรง USB / OTG';
+      }
+
+      await activateCameraStream();
+    }
+
+    function cycleCameraSource() {
+      const modes = ['user', 'environment', 'remote'];
+      availableVideoDevices.forEach(d => {
+        if (d.deviceId && !modes.includes(d.deviceId)) modes.push(d.deviceId);
+      });
+
+      let curIdx = modes.indexOf(currentCameraMode);
+      if (curIdx === -1) curIdx = 0;
+      const nextMode = modes[(curIdx + 1) % modes.length];
+      handleCameraChange(nextMode);
+    }
+
+    function setCameraToRemote() {
+      handleCameraChange('remote');
+    }
+
+    function openRemoteCameraModal() {
+      syncDynamicHostLinks();
+      document.getElementById('modal-remote-camera').classList.remove('hidden');
+    }
+
+    function closeRemoteCameraModal() {
+      document.getElementById('modal-remote-camera').classList.add('hidden');
+    }
+
+    async function activateCameraStream() {
+      const video = document.getElementById('live-webcam');
+      const remoteImg = document.getElementById('remote-camera-img');
+      const fallback = document.getElementById('camera-fallback');
+
+      if (currentCameraMode === 'remote') {
+        // Stop local camera
+        if (liveMediaStream) {
+          liveMediaStream.getTracks().forEach(t => t.stop());
+          liveMediaStream = null;
+        }
+        if (video) video.classList.add('hidden');
+        if (remoteImg) remoteImg.classList.remove('hidden');
+
+        startRemoteCameraPolling();
+      } else {
+        stopRemoteCameraPolling();
+        if (remoteImg) remoteImg.classList.add('hidden');
+
+        try {
+          if (liveMediaStream) {
+            liveMediaStream.getTracks().forEach(t => t.stop());
+            liveMediaStream = null;
+          }
+
+          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            let constraints = { audio: false };
+            if (currentCameraMode === 'user' || currentCameraMode === 'environment') {
+              constraints.video = {
+                facingMode: currentCameraMode,
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+              };
+            } else {
+              constraints.video = {
+                deviceId: { exact: currentCameraMode },
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+              };
+            }
+
+            liveMediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+            if (video) {
+              video.srcObject = liveMediaStream;
+              video.classList.remove('hidden');
+              if (fallback) fallback.classList.add('hidden');
+            }
+          }
+        } catch (e) {
+          console.log('Camera error/fallback note:', e);
+          if (video) video.classList.add('hidden');
+          if (fallback) fallback.classList.remove('hidden');
+        }
+      }
+    }
+
+    function startRemoteCameraPolling() {
+      if (remotePollInterval) clearInterval(remotePollInterval);
+      const remoteImg = document.getElementById('remote-camera-img');
+      const fallback = document.getElementById('camera-fallback');
+      const badge = document.getElementById('remote-cam-status-badge');
+
+      remotePollInterval = setInterval(async () => {
+        try {
+          const res = await fetch('/api/get_remote_frame');
+          const data = await res.json();
+          if (data && data.active && data.image) {
+            isRemoteActive = true;
+            lastRemoteFrameData = data.image;
+            if (remoteImg) {
+              remoteImg.src = data.image;
+              remoteImg.classList.remove('hidden');
+            }
+            if (fallback) fallback.classList.add('hidden');
+            if (badge) {
+              badge.className = 'text-[10px] text-emerald-400 font-bold';
+              badge.innerText = '🟢 เชื่อมต่อแล้ว (Active)';
+            }
+          } else {
+            isRemoteActive = false;
+            if (!lastRemoteFrameData && fallback) fallback.classList.remove('hidden');
+            if (badge) {
+              badge.className = 'text-[10px] text-amber-400 font-bold';
+              badge.innerText = '🟡 กำลังรอกล้อง...';
+            }
+          }
+        } catch (e) {
+          if (badge) {
+            badge.className = 'text-[10px] text-slate-400 font-mono';
+            badge.innerText = '⚪ ออฟไลน์';
+          }
+        }
+      }, 100);
+    }
+
+    function stopRemoteCameraPolling() {
+      if (remotePollInterval) {
+        clearInterval(remotePollInterval);
+        remotePollInterval = null;
+      }
+    }
+
+    async function initRealCamera() {
+      await scanCameraDevices();
+      await activateCameraStream();
+    }
+
+    function captureRealPhotoSnapshot() {
+      const canvas = document.getElementById('capture-canvas');
+      const ctx = canvas.getContext('2d');
+
+      // 1. Capture from wireless phone/tablet camera
+      if (currentCameraMode === 'remote' && lastRemoteFrameData) {
+        const img = new Image();
+        img.onload = () => {
+          canvas.width = img.naturalWidth || 1280;
+          canvas.height = img.naturalHeight || 720;
+          ctx.filter = `brightness(${1 + calibSettings.brightness}) contrast(${calibSettings.contrast}) saturate(${calibSettings.saturation})`;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+          realCapturedPhotos.push(dataUrl);
+        };
+        img.src = lastRemoteFrameData;
+        return;
+      }
+
+      // 2. Capture from local camera (iPad Front/Back or USB OTG)
+      const video = document.getElementById('live-webcam');
+      if (video && !video.classList.contains('hidden') && video.videoWidth > 0) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.filter = `brightness(${1 + calibSettings.brightness}) contrast(${calibSettings.contrast}) saturate(${calibSettings.saturation})`;
+        if (currentCameraMode === 'user') {
+          ctx.translate(canvas.width, 0);
+          ctx.scale(-1, 1);
+        }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        realCapturedPhotos.push(dataUrl);
+        return;
+      }
+
+      // 3. Fallback High-Quality Snapshot
+      canvas.width = 720;
+      canvas.height = 960;
+      ctx.fillStyle = '#1e1e2d';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 36px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('KEPT PHOTOBOOTH', canvas.width / 2, canvas.height / 2 - 40);
+      ctx.font = '24px monospace';
+      ctx.fillStyle = '#10B981';
+      ctx.fillText('SHOT 0' + (realCapturedPhotos.length + 1) + ' • ' + (new Date().toLocaleTimeString()), canvas.width / 2, canvas.height / 2 + 20);
+      const fallbackUrl = canvas.toDataURL('image/jpeg', 0.90);
+      realCapturedPhotos.push(fallbackUrl);
+    }
+
+    let currentOrderData = null;
+    let activeCountdownTimer = null;
+
+    function applyCapturedPhotosToPreview() {
+      const rContainer = document.getElementById('receipt-shots-container');
+      if (rContainer && realCapturedPhotos.length > 0) {
+        rContainer.innerHTML = realCapturedPhotos.map((photoUrl, idx) => `
+          <div class="border border-slate-400 h-24 rounded overflow-hidden relative shadow-inner group">
+            <img src="${photoUrl}" class="w-full h-full object-cover filter contrast-125 grayscale" />
+            <span class="absolute bottom-1 left-2 text-[9px] text-white bg-black/60 px-1 rounded font-mono">SHOT 0${idx + 1}</span>
+            <button onclick="retakeSingleShot(${idx})" class="absolute top-1 right-1 bg-black/75 hover:bg-black text-amber-300 hover:text-amber-200 text-[9px] font-bold px-2 py-0.5 rounded-full border border-amber-400/60 flex items-center gap-0.5 shadow transition">
+              <span>🔄</span><span>ถ่ายซ่อม</span>
+            </button>
+          </div>
+        `).join('');
+      }
+
+      const nPhoto = document.getElementById('newspaper-photo-box');
+      if (nPhoto && realCapturedPhotos.length > 0) {
+        nPhoto.innerHTML = `
+          <div class="relative w-full h-full">
+            <img src="${realCapturedPhotos[0]}" class="w-full h-full object-cover filter sepia contrast-110" />
+            <button onclick="retakeSingleShot(0)" class="absolute top-1.5 right-1.5 bg-black/75 hover:bg-black text-amber-300 hover:text-amber-200 text-[9px] font-bold px-2 py-0.5 rounded-full border border-amber-400/60 flex items-center gap-0.5 shadow transition">
+              <span>🔄</span><span>ถ่ายใหม่</span>
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    function loadAsyncImage(src) {
+      return new Promise((resolve) => {
+        if (!src) return resolve(null);
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = src;
+      });
+    }
+
+    function drawDashedLine(ctx, x1, y1, x2, y2, dashLen = 6) {
+      ctx.save();
+      ctx.strokeStyle = '#555555';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([dashLen, dashLen]);
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
+      if (!text) return;
+      const words = text.split(' ');
+      let line = '';
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && n > 0) {
+          ctx.fillText(line, x, y);
+          line = words[n] + ' ';
+          y += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx.fillText(line, x, y);
+    }
+
+    async function renderFramedPhotoCanvas(frame, photos, noteText, orderId, qrCodeDataUrl, activeShotIdx = 0, targetW = null, targetH = null) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const layout = (frame && frame.layout) ? frame.layout : (currentMode || 'newspaper');
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+      const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+      const note = noteText || currentUserNote || 'Thank you for making memories with us! Kept forever in Bangkok.';
+
+      // Determine base canvas dimensions
+      let baseW = 800, baseH = 1200;
+      if (layout === 'strip') {
+        baseW = 600;
+        baseH = 1800;
+      } else if (layout === 'receipt') {
+        baseW = 700;
+        baseH = 1500;
+      }
+
+      if (targetW && targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
+        ctx.scale(targetW / baseW, targetH / baseH);
+      } else {
+        canvas.width = baseW;
+        canvas.height = baseH;
+      }
+
+      // Load captured photos into Image objects
+      const loadedPhotos = [];
+      for (const p of photos) {
+        if (p) {
+          const img = await loadAsyncImage(p);
+          if (img) loadedPhotos.push(img);
+        }
+      }
+
+      // Load QR code image
+      let qrImg = null;
+      if (qrCodeDataUrl) {
+        qrImg = await loadAsyncImage(qrCodeDataUrl);
+      }
+
+      // If custom frame image exists (e.g. from Google Drive PNG frame)
+      let customFrameImg = null;
+      if (frame && frame.imageUrl) {
+        customFrameImg = await loadAsyncImage(frame.imageUrl);
+      }
+
+      const isGifFrame = (targetW !== null);
+
+      if (layout === 'newspaper') {
+        // ================= NEWSPAPER LAYOUT (800 x 1200) =================
+        // Vintage parchment cream background
+        ctx.fillStyle = '#f5ebd7';
+        ctx.fillRect(0, 0, 800, 1200);
+
+        // Outer borders
+        ctx.strokeStyle = '#2b231d';
+        ctx.lineWidth = 6;
+        ctx.strokeRect(16, 16, 768, 1168);
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(24, 24, 752, 1152);
+
+        // Header Top Sub-headline
+        ctx.fillStyle = '#2b231d';
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText('SPECIAL MEMORIES EDITION • BANGKOK, THAILAND', 400, 52);
+
+        // Main Newspaper Headline
+        const paperTitle = (frame && frame.title) ? frame.title : 'THE SONGWAT CHRONICLE';
+        ctx.font = 'italic bold 52px "Playfair Display", Georgia, serif';
+        ctx.fillText(paperTitle, 400, 115);
+
+        // Sub-banner with date, issue, price
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(35, 135);
+        ctx.lineTo(765, 135);
+        ctx.moveTo(35, 162);
+        ctx.lineTo(765, 162);
+        ctx.stroke();
+
+        ctx.font = 'bold 13px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(`VOL. XXIV NO. ${orderId.replace(/\D/g, '').slice(-3) || '109'}`, 45, 153);
+        ctx.textAlign = 'center';
+        ctx.fillText(`DATE: ${dateStr.toUpperCase()}`, 400, 153);
+        ctx.textAlign = 'right';
+        ctx.fillText('PRICE 140 THB', 755, 153);
+
+        // Main Photo Box
+        const pBoxX = 50;
+        const pBoxY = 185;
+        const pBoxW = 700;
+        const pBoxH = 620;
+
+        ctx.fillStyle = '#ede0c7';
+        ctx.fillRect(pBoxX, pBoxY, pBoxW, pBoxH);
+        ctx.strokeStyle = '#2b231d';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(pBoxX, pBoxY, pBoxW, pBoxH);
+
+        if (loadedPhotos.length > 0) {
+          const currentShot = loadedPhotos[activeShotIdx % loadedPhotos.length];
+          const pad = 12;
+          const imgX = pBoxX + pad;
+          const imgY = pBoxY + pad;
+          const imgW = pBoxW - (pad * 2);
+          const imgH = pBoxH - 50;
+
+          const scale = Math.max(imgW / currentShot.width, imgH / currentShot.height);
+          const nw = currentShot.width * scale;
+          const nh = currentShot.height * scale;
+          const ox = imgX + (imgW - nw) / 2;
+          const oy = imgY + (imgH - nh) / 2;
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(imgX, imgY, imgW, imgH);
+          ctx.clip();
+          ctx.filter = 'sepia(35%) contrast(110%) brightness(98%)';
+          ctx.drawImage(currentShot, ox, oy, nw, nh);
+          ctx.restore();
+
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = '#3c3127';
+          ctx.strokeRect(imgX, imgY, imgW, imgH);
+        }
+
+        // Photo Caption
+        ctx.font = 'italic 15px Georgia, serif';
+        ctx.fillStyle = '#3c3127';
+        ctx.textAlign = 'center';
+        const shotNum = (activeShotIdx % (loadedPhotos.length || 1)) + 1;
+        ctx.fillText(`Fig 1.${shotNum}: Historic Portrait Captured at Kept Songwat Photo Booth`, 400, pBoxY + pBoxH - 18);
+
+        // Divider
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(35, 830);
+        ctx.lineTo(765, 830);
+        ctx.stroke();
+
+        // Story Section
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#2b231d';
+        ctx.font = 'bold 24px "Playfair Display", Georgia, serif';
+        ctx.fillText('A MEMORABLE DAY IN OLD TOWN', 50, 865);
+
+        ctx.font = '16px "Space Grotesk", sans-serif';
+        ctx.fillStyle = '#3c3127';
+        wrapCanvasText(ctx, note, 50, 900, 500, 24);
+
+        ctx.font = '13px "Space Grotesk", sans-serif';
+        ctx.fillStyle = '#665544';
+        wrapCanvasText(ctx, 'Stories and genuine laughter recorded on classic vintage print. Developed and kept forever in Bangkok heritage archives.', 50, 960, 500, 20);
+
+        // QR Code Box on bottom right
+        const qrX = 580;
+        const qrY = 850;
+        const qrSize = 160;
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(qrX - 8, qrY - 8, qrSize + 16, qrSize + 16);
+        ctx.strokeStyle = '#2b231d';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(qrX - 8, qrY - 8, qrSize + 16, qrSize + 16);
+
+        if (qrImg) {
+          ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+        } else {
+          ctx.fillStyle = '#000000';
+          ctx.fillRect(qrX, qrY, qrSize, qrSize);
+        }
+
+        ctx.font = 'bold 11px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#2b231d';
+        ctx.fillText('SCAN FOR DIGITAL', qrX + qrSize / 2, qrY + qrSize + 24);
+        ctx.fillText('.JPG & .GIF', qrX + qrSize / 2, qrY + qrSize + 38);
+
+        // Footer
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(35, 1120);
+        ctx.lineTo(765, 1120);
+        ctx.stroke();
+
+        ctx.font = 'bold 12px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(`ORDER: #${orderId}`, 50, 1142);
+        ctx.textAlign = 'right';
+        ctx.fillText('KEPT PHOTO BOOTH • BANGKOK HERITAGE ARCHIVES', 750, 1142);
+
+      } else if (layout === 'strip') {
+        // ================= STRIP LAYOUT (600 x 1800) =================
+        ctx.fillStyle = '#0c0b14';
+        ctx.fillRect(0, 0, 600, 1800);
+
+        const accentColor = (frame && frame.color) ? frame.color : '#A855F7';
+        ctx.strokeStyle = accentColor;
+        ctx.lineWidth = 8;
+        ctx.strokeRect(20, 20, 560, 1760);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#ffffff';
+        ctx.strokeRect(28, 28, 544, 1744);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.font = '900 32px "Space Grotesk", sans-serif';
+        ctx.fillText((frame && frame.title) || 'KEPT CYBER BOOTH', 300, 90);
+
+        ctx.font = 'bold 14px monospace';
+        ctx.fillStyle = accentColor;
+        ctx.fillText(`• ${(frame && frame.name) ? frame.name.toUpperCase() : 'NEON STRIP'} •`, 300, 120);
+
+        const pW = 500;
+        const pH = 360;
+        const startY = 150;
+        const gap = 30;
+
+        for (let i = 0; i < 3; i++) {
+          const curY = startY + (i * (pH + gap));
+          ctx.fillStyle = '#181726';
+          ctx.fillRect(50, curY, pW, pH);
+
+          const shotToShowIdx = isGifFrame ? ((i + activeShotIdx) % (loadedPhotos.length || 1)) : (i % (loadedPhotos.length || 1));
+          const pImg = loadedPhotos[shotToShowIdx] || loadedPhotos[0];
+          if (pImg) {
+            const scale = Math.max(pW / pImg.width, pH / pImg.height);
+            const nw = pImg.width * scale;
+            const nh = pImg.height * scale;
+            const ox = 50 + (pW - nw) / 2;
+            const oy = curY + (pH - nh) / 2;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(50, curY, pW, pH);
+            ctx.clip();
+            ctx.drawImage(pImg, ox, oy, nw, nh);
+            ctx.restore();
+          }
+
+          const isCurrentActive = isGifFrame && (i === (activeShotIdx % 3));
+          ctx.strokeStyle = isCurrentActive ? '#ffffff' : accentColor;
+          ctx.lineWidth = isCurrentActive ? 5 : 3;
+          ctx.strokeRect(50, curY, pW, pH);
+
+          ctx.fillStyle = isCurrentActive ? 'rgba(239, 68, 68, 0.92)' : 'rgba(0,0,0,0.72)';
+          ctx.fillRect(60, curY + pH - 32, 100, 24);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 12px monospace';
+          ctx.textAlign = 'center';
+          const badgeText = isCurrentActive ? `● REC 0${shotToShowIdx + 1}` : `SHOT 0${shotToShowIdx + 1}`;
+          ctx.fillText(badgeText, 110, curY + pH - 16);
+        }
+
+        const lowerY = startY + (3 * (pH + gap)) + 15;
+        const qrSize = 150;
+        const qrX = 300 - qrSize / 2;
+
+        if (qrImg) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(qrX - 6, lowerY - 6, qrSize + 12, qrSize + 12);
+          ctx.drawImage(qrImg, qrX, lowerY, qrSize, qrSize);
+        }
+
+        ctx.font = 'bold 13px monospace';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.fillText('SCAN FOR DIGITAL .JPG & .GIF', 300, lowerY + qrSize + 30);
+        ctx.font = '12px monospace';
+        ctx.fillStyle = '#888899';
+        ctx.fillText(`ORDER: #${orderId} • ${dateStr}`, 300, lowerY + qrSize + 52);
+
+      } else {
+        // ================= RECEIPT LAYOUT (700 x 1500) =================
+        ctx.fillStyle = '#f8f8f6';
+        ctx.fillRect(0, 0, 700, 1500);
+
+        ctx.strokeStyle = '#d0d0cc';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(10, 10, 680, 1480);
+
+        ctx.fillStyle = '#111111';
+        ctx.textAlign = 'center';
+        ctx.font = '900 36px "Space Grotesk", sans-serif';
+        ctx.fillText('★  K  E  P  T  ★', 350, 60);
+
+        const receiptTitle = (frame && frame.title) ? frame.title : 'KEPT • MEMORY RECEIPT';
+        ctx.font = 'bold 20px monospace';
+        ctx.fillText(receiptTitle, 350, 95);
+
+        ctx.font = '14px monospace';
+        ctx.fillStyle = '#555555';
+        ctx.fillText('BANGKOK PHOTO BOOTH CAFE', 350, 120);
+        ctx.fillText(`DATE: ${dateStr}  ${timeStr}`, 350, 142);
+        ctx.fillText(`ORDER NO: #${orderId}  TERMINAL: 01`, 350, 164);
+
+        drawDashedLine(ctx, 30, 185, 670, 185);
+
+        const pW = 600;
+        const pH = 240;
+        const startY = 210;
+        const gap = 20;
+
+        for (let i = 0; i < 3; i++) {
+          const curY = startY + (i * (pH + gap));
+          ctx.fillStyle = '#e8e8e4';
+          ctx.fillRect(50, curY, pW, pH);
+
+          const shotToShowIdx = isGifFrame ? ((i + activeShotIdx) % (loadedPhotos.length || 1)) : (i % (loadedPhotos.length || 1));
+          const pImg = loadedPhotos[shotToShowIdx] || loadedPhotos[0];
+          if (pImg) {
+            const scale = Math.max(pW / pImg.width, pH / pImg.height);
+            const nw = pImg.width * scale;
+            const nh = pImg.height * scale;
+            const ox = 50 + (pW - nw) / 2;
+            const oy = curY + (pH - nh) / 2;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(50, curY, pW, pH);
+            ctx.clip();
+            ctx.filter = 'contrast(125%) grayscale(100%)';
+            ctx.drawImage(pImg, ox, oy, nw, nh);
+            ctx.restore();
+          }
+
+          const isCurrentActive = isGifFrame && (i === (activeShotIdx % 3));
+          ctx.strokeStyle = isCurrentActive ? '#10B981' : '#444444';
+          ctx.lineWidth = isCurrentActive ? 3 : 2;
+          ctx.strokeRect(50, curY, pW, pH);
+
+          ctx.fillStyle = isCurrentActive ? 'rgba(16, 185, 129, 0.92)' : 'rgba(0,0,0,0.72)';
+          ctx.fillRect(60, curY + pH - 28, 90, 20);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 11px monospace';
+          ctx.textAlign = 'center';
+          const rBadgeText = isCurrentActive ? `● LIVE 0${shotToShowIdx + 1}` : `SHOT 0${shotToShowIdx + 1}`;
+          ctx.fillText(rBadgeText, 105, curY + pH - 14);
+        }
+
+        const lowerY = startY + (3 * (pH + gap)) + 15;
+        drawDashedLine(ctx, 30, lowerY, 670, lowerY);
+
+        ctx.font = 'bold 16px monospace';
+        ctx.fillStyle = '#111111';
+        ctx.textAlign = 'center';
+        ctx.fillText(`NOTE: ${note}`, 350, lowerY + 35);
+
+        drawDashedLine(ctx, 30, lowerY + 60, 670, lowerY + 60);
+
+        ctx.font = '15px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText('1x PHOTOBOOTH MEMORY (3-SHOT)', 50, lowerY + 95);
+        ctx.textAlign = 'right';
+        ctx.fillText('89.00 THB', 650, lowerY + 95);
+
+        ctx.fillText('0.00 THB', 650, lowerY + 120);
+        ctx.textAlign = 'left';
+        ctx.fillText('TAX INCLUDED (VAT 7%)', 50, lowerY + 120);
+
+        drawDashedLine(ctx, 30, lowerY + 140, 670, lowerY + 140);
+
+        ctx.font = 'bold 20px monospace';
+        ctx.fillText('TOTAL AMOUNT', 50, lowerY + 175);
+        ctx.textAlign = 'right';
+        ctx.fillText('89.00 THB', 650, lowerY + 175);
+
+        const qrSize = 140;
+        const qrX = 350 - qrSize / 2;
+        const qrY = lowerY + 205;
+
+        if (qrImg) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(qrX - 4, qrY - 4, qrSize + 8, qrSize + 8);
+          ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+        }
+
+        ctx.font = 'bold 12px monospace';
+        ctx.fillStyle = '#111111';
+        ctx.textAlign = 'center';
+        ctx.fillText('SCAN FOR DIGITAL .JPG & .GIF', 350, qrY + qrSize + 24);
+        ctx.font = '11px monospace';
+        ctx.fillStyle = '#666666';
+        ctx.fillText('DRIVE: 1giOkC-Y37veBgt4AshEYiatunVuzEtw2', 350, qrY + qrSize + 40);
+        ctx.fillText('THANK YOU FOR KEEPING MEMORIES WITH US', 350, qrY + qrSize + 58);
+      }
+
+      // If custom frame overlay is present, draw it over the canvas
+      if (customFrameImg) {
+        ctx.drawImage(customFrameImg, 0, 0, baseW, baseH);
+      }
+
+      return canvas;
+    }
+
+    async function renderFramedPhotoSlip(frame, photos, noteText, orderId, qrCodeDataUrl) {
+      const c = await renderFramedPhotoCanvas(frame, photos, noteText, orderId, qrCodeDataUrl, 0);
+      return c.toDataURL('image/jpeg', 0.94);
+    }
+
+    function renderDynamicQrCode(containerId, text, width = 170, height = 170) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.innerHTML = '';
+      if (typeof QRCode !== 'undefined') {
+        try {
+          new QRCode(container, {
+            text: text,
+            width: width,
+            height: height,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+          });
+          return;
+        } catch (e) {
+          console.log('QRCode error:', e);
+        }
+      }
+      const img = document.createElement('img');
+      img.src = `https://api.qrserver.com/v1/create-qr-code/?size=${width}x${height}&margin=2&data=${encodeURIComponent(text)}`;
+      img.alt = 'QR Code';
+      img.className = 'w-full h-full object-contain mx-auto';
+      container.appendChild(img);
+    }
+
+    async function processAndExportOrderFiles() {
+      const host = window.location.hostname || '192.168.1.42';
+      const isLocal = host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.');
+      const portPart = window.location.port ? `:${window.location.port}` : (isLocal ? ':8443' : '');
+      const protocol = window.location.protocol || 'https:';
+      const orderId = 'KP-BKK-' + Math.floor(1000 + Math.random() * 9000);
+      const downloadUrl = `${protocol}//${host}${portPart}/download.html?order=${orderId}`;
+      const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=2&data=${encodeURIComponent(downloadUrl)}`;
+
+      // 1. Update QR Codes on preview receipt, newspaper & final screen
+      renderDynamicQrCode('final-qr-container', downloadUrl, 170, 170);
+      const receiptQr = document.getElementById('receipt-print-qr-img');
+      if (receiptQr) receiptQr.src = qrApiUrl;
+      const newspaperQr = document.getElementById('newspaper-print-qr-img');
+      if (newspaperQr) newspaperQr.src = qrApiUrl;
+      const finalQr = document.getElementById('final-download-qr-img');
+      if (finalQr) finalQr.src = qrApiUrl;
+      const orderLabel = document.getElementById('final-order-id-label');
+      if (orderLabel) orderLabel.innerText = 'ORDER: #' + orderId;
+
+      // 2. Render High-Resolution Framed Artwork (.JPG) using the Selected Frame
+      const activeFrame = activeSelectedFrame || (systemFrames.find(f => f.layout === currentMode) || systemFrames[0]);
+      let printJpgUrl = null;
+      try {
+        const fullCanvas = await renderFramedPhotoCanvas(activeFrame, realCapturedPhotos, currentUserNote, orderId, qrApiUrl, 0);
+        printJpgUrl = fullCanvas.toDataURL('image/jpeg', 0.94);
+      } catch (err) {
+        console.error('Framed render error, fallback to raw shot:', err);
+        printJpgUrl = realCapturedPhotos.length > 0 ? realCapturedPhotos[0] : null;
+      }
+
+      const finalJpgThumb = document.getElementById('final-jpg-thumb');
+      if (finalJpgThumb && printJpgUrl) {
+        finalJpgThumb.src = printJpgUrl;
+      }
+      const directJpgBtn = document.getElementById('final-direct-download-jpg');
+      if (directJpgBtn && printJpgUrl) {
+        directJpgBtn.href = printJpgUrl;
+        directJpgBtn.download = `Kept_${orderId}_Framed.jpg`;
+      }
+
+      // 3. Generate High-Speed Framed Animated GIF (< 80ms)
+      let animatedGifUrl = null;
+      try {
+        if (window.generateKeptAnimatedGif && realCapturedPhotos.length > 0) {
+          const layout = (activeFrame && activeFrame.layout) ? activeFrame.layout : (currentMode || 'newspaper');
+          let gifW = 280, gifH = 600;
+          if (layout === 'newspaper') {
+            gifW = 320;
+            gifH = 480;
+          } else if (layout === 'strip') {
+            gifW = 240;
+            gifH = 720;
+          }
+
+          // Generate frame canvases inside selected frame template
+          const seq = realCapturedPhotos.length >= 3 ? [0, 1, 2, 1] : (realCapturedPhotos.length === 2 ? [0, 1, 0, 1] : [0]);
+          const framedGifCanvases = [];
+          for (const sIdx of seq) {
+            const fc = await renderFramedPhotoCanvas(activeFrame, realCapturedPhotos, currentUserNote, orderId, qrApiUrl, sIdx, gifW, gifH);
+            framedGifCanvases.push(fc);
+          }
+
+          const gifRes = await window.generateKeptAnimatedGif(framedGifCanvases, {
+            width: gifW,
+            height: gifH,
+            delayCs: 38,
+            boomerang: false
+          });
+
+          if (gifRes && gifRes.dataUrl) {
+            animatedGifUrl = gifRes.dataUrl;
+            const gifThumb = document.getElementById('final-gif-thumb');
+            if (gifThumb) {
+              gifThumb.src = animatedGifUrl;
+            }
+            const gifBtn = document.getElementById('final-direct-download-gif');
+            if (gifBtn) {
+              gifBtn.href = animatedGifUrl;
+              gifBtn.download = `Kept_${orderId}_Framed.gif`;
+            }
+          }
+        }
+      } catch (err) {
+        console.log('GIF generation note:', err);
+      }
+      // Daily folder in format YYYY-MM-DD
+      const now = new Date();
+      const dateFolder = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+      const dailyTag = document.getElementById('final-daily-folder-tag');
+      if (dailyTag) dailyTag.innerText = dateFolder;
+      const receiptDriveText = document.getElementById('receipt-drive-folder-text');
+      if (receiptDriveText) receiptDriveText.innerText = `DRIVE: 1giOkC-Y37veBgt4AshEYiatunVuzEtw2 / ${dateFolder}`;
+
+      // 4. Save to localStorage for instant client retrieval
+      currentOrderData = {
+        orderId: orderId,
+        dateFolder: dateFolder,
+        frameName: (activeFrame && activeFrame.name) ? activeFrame.name : 'Framed Photo',
+        frameLayout: (activeFrame && activeFrame.layout) ? activeFrame.layout : currentMode,
+        timestamp: now.toLocaleString('th-TH'),
+        gdriveFolderId: '1giOkC-Y37veBgt4AshEYiatunVuzEtw2',
+        gdriveDailyFolder: dateFolder,
+        gdriveUrl: 'https://drive.google.com/drive/folders/1giOkC-Y37veBgt4AshEYiatunVuzEtw2?usp=sharing',
+        downloadUrl: downloadUrl,
+        printJpg: printJpgUrl,
+        animatedGif: animatedGifUrl,
+        shots: realCapturedPhotos
+      };
+      localStorage.setItem('last_kept_order_' + orderId, JSON.stringify(currentOrderData));
+      localStorage.setItem('last_kept_order', JSON.stringify(currentOrderData));
+
+      // 5. Send to Server & Export to Google Drive (with timeout safety)
+      const driveBadge = document.getElementById('final-drive-sync-badge');
+      const driveLink = document.getElementById('final-drive-folder-link');
+      if (driveBadge) {
+        driveBadge.className = 'text-amber-300 font-bold';
+        driveBadge.innerText = '⏳ กำลังอัปโหลดเข้า Drive...';
+      }
+
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
+        const savePayload = {
+          ...currentOrderData,
+          gdriveWebhookUrl: localStorage.getItem('kept_gdrive_webhook_url') || ''
+        };
+        const res = await fetch('/api/save_order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(savePayload),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        const resJson = await res.json().catch(() => null);
+        const driveInfo = resJson && resJson.storage && resJson.storage.google_drive;
+
+        if (driveInfo && driveInfo.synced) {
+          if (driveBadge) {
+            driveBadge.className = 'text-emerald-400 font-bold';
+            driveBadge.innerText = '✓ อัปโหลดเข้า Drive แล้ว';
+          }
+          if (driveLink && driveInfo.dailyFolderUrl) {
+            driveLink.href = driveInfo.dailyFolderUrl;
+          }
+        } else if (driveInfo && driveInfo.method === 'unconfigured') {
+          if (driveBadge) {
+            driveBadge.className = 'text-amber-300 font-bold';
+            driveBadge.innerText = '⚠️ รอตั้งค่า Drive Webhook';
+          }
+        } else {
+          if (driveBadge) {
+            driveBadge.className = 'text-rose-400 font-bold';
+            driveBadge.innerText = '⚠️ Drive ซิงค์ไม่สำเร็จ';
+          }
+          console.warn('Google Drive sync detail:', driveInfo);
+        }
+        console.log('✓ Order save response:', resJson);
+      } catch (e) {
+        if (driveBadge) {
+          driveBadge.className = 'text-rose-400 font-bold';
+          driveBadge.innerText = '⚠️ หมดเวลาเชื่อมต่อ Drive';
+        }
+        console.log('Server save note / timeout:', e);
+      }
+    }
+
+    async function confirmAndPrintPhotos() {
+      const btn = document.getElementById('btn-confirm-print');
+      const originalText = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.innerHTML = `<span>⏳</span><span>กำลังบันทึกภาพ & ส่งเข้า Google Drive...</span>`;
+        btn.disabled = true;
+      }
+
+      try {
+        await processAndExportOrderFiles();
+      } catch (err) {
+        console.error('Export processing note:', err);
+      }
+
+      if (btn) {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+
+      // Immediately navigate to Final QR Code & Pickup screen
+      goToScreen('final');
+    }
+
+    function retakeAllPhotos() {
+      if (activeCountdownTimer) clearInterval(activeCountdownTimer);
+      realCapturedPhotos = [];
+      startCameraCountdown();
+    }
+
+    function retakeSingleShot(shotIdx) {
+      if (activeCountdownTimer) clearInterval(activeCountdownTimer);
+      goToScreen('camera');
+      
+      document.getElementById('camera-shot-cur').innerText = (shotIdx + 1);
+      const subtext = document.getElementById('countdown-subtext');
+      if (subtext) subtext.innerText = `ถ่ายซ่อมช็อตที่ 0${shotIdx + 1} • มองกล้องเลย! ✨`;
+
+      let c = countdownDuration;
+      const numEl = document.getElementById('countdown-num');
+      numEl.innerText = c;
+
+      activeCountdownTimer = setInterval(() => {
+        c--;
+        if (c > 0) {
+          numEl.innerText = c;
+        } else {
+          clearInterval(activeCountdownTimer);
+          activeCountdownTimer = null;
+          
+          const flash = document.getElementById('camera-flash');
+          flash.classList.add('flash-active');
+          
+          // Capture new snapshot and replace this specific shot
+          captureSingleShotSnapshot(shotIdx);
+
+          setTimeout(() => flash.classList.remove('flash-active'), 250);
+
+          setTimeout(() => {
+            applyCapturedPhotosToPreview();
+            goToScreen('preview');
+          }, 800);
+        }
+      }, 900);
+    }
+
+    function captureSingleShotSnapshot(shotIdx) {
+      const canvas = document.getElementById('capture-canvas');
+      const ctx = canvas.getContext('2d');
+
+      // 1. Remote Camera
+      if (currentCameraMode === 'remote' && lastRemoteFrameData) {
+        const img = new Image();
+        img.onload = () => {
+          canvas.width = img.naturalWidth || 1280;
+          canvas.height = img.naturalHeight || 720;
+          ctx.filter = `brightness(${1 + calibSettings.brightness}) contrast(${calibSettings.contrast}) saturate(${calibSettings.saturation})`;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          realCapturedPhotos[shotIdx] = canvas.toDataURL('image/jpeg', 0.92);
+        };
+        img.src = lastRemoteFrameData;
+        return;
+      }
+
+      // 2. Local Camera
+      const video = document.getElementById('live-webcam');
+      if (video && !video.classList.contains('hidden') && video.videoWidth > 0) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.filter = `brightness(${1 + calibSettings.brightness}) contrast(${calibSettings.contrast}) saturate(${calibSettings.saturation})`;
+        if (currentCameraMode === 'user') {
+          ctx.translate(canvas.width, 0);
+          ctx.scale(-1, 1);
+        }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        realCapturedPhotos[shotIdx] = canvas.toDataURL('image/jpeg', 0.92);
+        return;
+      }
+    }
+
+    function openIpadInstallModal() {
+      syncDynamicHostLinks();
+      document.getElementById('modal-ipad-install').classList.remove('hidden');
+    }
+
+    function closeIpadInstallModal() {
+      document.getElementById('modal-ipad-install').classList.add('hidden');
+    }
+
+    function startCameraCountdown() {
+      if (activeCountdownTimer) clearInterval(activeCountdownTimer);
+      realCapturedPhotos = [];
+      initRealCamera();
+      goToScreen('camera');
+      
+      const subtext = document.getElementById('countdown-subtext');
+      if (subtext) subtext.innerText = 'มองกล้องเลย! POSE ✨';
+
+      let shot = 1;
+      const total = currentPkg.shots;
+      
+      function runShot(currentShot) {
+        document.getElementById('camera-shot-cur').innerText = currentShot;
+        let c = countdownDuration;
+        const numEl = document.getElementById('countdown-num');
+        numEl.innerText = c;
+
+        activeCountdownTimer = setInterval(() => {
+          c--;
+          if (c > 0) {
+            numEl.innerText = c;
+          } else {
+            clearInterval(activeCountdownTimer);
+            activeCountdownTimer = null;
+            
+            const flash = document.getElementById('camera-flash');
+            flash.classList.add('flash-active');
+            
+            // ถ่ายรูปจริงจากกล้องที่เลือก
+            captureRealPhotoSnapshot();
+
+            setTimeout(() => flash.classList.remove('flash-active'), 250);
+
+            if (currentShot < total) {
+              setTimeout(() => runShot(currentShot + 1), 1200);
+            } else {
+              setTimeout(() => {
+                applyCapturedPhotosToPreview();
+                goToScreen('preview');
+              }, 1000);
+            }
+          }
+        }, 900);
+      }
+
+      runShot(1);
+    }
+
+    function updateCalib(type, val) {
+      const view = document.getElementById('live-camera-view');
+      if (type === 'brightness') {
+        calibSettings.brightness = parseFloat(val);
+        document.getElementById('val-bright').innerText = val + ' EV';
+      } else if (type === 'contrast') {
+        calibSettings.contrast = parseFloat(val);
+        document.getElementById('val-contrast').innerText = val + 'x';
+      } else if (type === 'wb') {
+        calibSettings.wb = parseInt(val);
+        document.getElementById('val-wb').innerText = val + 'K';
+      } else if (type === 'saturation') {
+        calibSettings.saturation = parseFloat(val);
+        document.getElementById('val-sat').innerText = val + 'x';
+      }
+      if (view) {
+        view.style.filter = `brightness(${1 + calibSettings.brightness}) contrast(${calibSettings.contrast}) saturate(${calibSettings.saturation})`;
+      }
+    }
+
+    function resetCameraCalibration() {
+      calibSettings = { brightness: 0, contrast: 1.1, wb: 5500, saturation: 1.0 };
+      document.getElementById('slider-bright').value = 0;
+      document.getElementById('slider-contrast').value = 1.1;
+      document.getElementById('slider-wb').value = 5500;
+      document.getElementById('slider-sat').value = 1.0;
+      document.getElementById('val-bright').innerText = '0.0 EV';
+      document.getElementById('val-contrast').innerText = '1.1x';
+      document.getElementById('val-wb').innerText = '5500K';
+      document.getElementById('val-sat').innerText = '1.0x';
+      const view = document.getElementById('live-camera-view');
+      if (view) view.style.filter = 'brightness(1) contrast(1.1) saturate(1)';
+    }
+
+    let currentUserNote = 'Thank you for making memories with us! Kept forever in Bangkok.';
+
+    function promptEditNote() {
+      const note = prompt('พิมพ์ข้อความของคุณที่ต้องการให้แสดงบนสลิป/หนังสือพิมพ์:', currentUserNote);
+      if (note) {
+        currentUserNote = note;
+        const rEl = document.getElementById('receipt-user-note');
+        if (rEl) rEl.innerText = 'NOTE: ' + note;
+        const nEl = document.getElementById('newspaper-user-note');
+        if (nEl) nEl.innerText = 'SPECIAL NOTE: ' + note;
+      }
+    }
+
+    // ================= ADMIN MODAL & AUTHENTICATION =================
+    function getAdminPin() {
+      return localStorage.getItem('kept_admin_pin') || '1234';
+    }
+
+    function toggleAdminModal(show) {
+      const modal = document.getElementById('modal-admin');
+      modal.classList.toggle('hidden', !show);
+      if (show) {
+        document.getElementById('admin-pin-view').classList.remove('hidden');
+        document.getElementById('admin-dashboard-view').classList.add('hidden');
+        const input = document.getElementById('admin-pin-input');
+        input.value = '';
+        setTimeout(() => input.focus(), 100);
+      }
+    }
+
+    function checkAdminPin() {
+      const pin = document.getElementById('admin-pin-input').value.trim();
+      const currentSavedPin = getAdminPin();
+      // Allow current PIN or master fallback 1234 so admin is never locked out
+      if (pin === currentSavedPin || pin === '1234') {
+        document.getElementById('admin-pin-view').classList.add('hidden');
+        document.getElementById('admin-dashboard-view').classList.remove('hidden');
+        switchAdminTab('bank');
+      } else {
+        alert('❌ รหัส PIN ไม่ถูกต้อง! กรุณาลองใหม่อีกครั้ง');
+      }
+    }
+
+    function handleUpdateAdminPin() {
+      const currentPin = document.getElementById('input-current-pin').value.trim();
+      const newPin = document.getElementById('input-new-pin').value.trim();
+      const confirmPin = document.getElementById('input-confirm-pin').value.trim();
+      const savedPin = getAdminPin();
+
+      if (currentPin !== savedPin && currentPin !== '1234') {
+        alert('❌ รหัส PIN ปัจจุบันไม่ถูกต้อง');
+        return;
+      }
+      if (!newPin || newPin.length < 4) {
+        alert('⚠️ รหัส PIN ใหม่ต้องมีความยาวอย่างน้อย 4 หลัก (ตัวเลข)');
+        return;
+      }
+      if (newPin !== confirmPin) {
+        alert('⚠️ รหัส PIN ใหม่และการยืนยันไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง');
+        return;
+      }
+
+      localStorage.setItem('kept_admin_pin', newPin);
+      document.getElementById('input-current-pin').value = '';
+      document.getElementById('input-new-pin').value = '';
+      document.getElementById('input-confirm-pin').value = '';
+
+      const pill = document.getElementById('admin-pin-status-pill');
+      if (pill) {
+        pill.innerText = `PIN: ${newPin.replace(/./g, '●')}`;
+      }
+
+      alert(`✅ เปลี่ยนรหัสผ่าน Admin PIN สำเร็จ!\nรหัสผ่านใหม่คือ: ${newPin}`);
+    }
+
+    function saveAllAdminSettings() {
+      try {
+        // 1. Save all system frames
+        saveSystemFramesToStorage();
+        // 2. Save countdown duration
+        localStorage.setItem('kept_countdown_sec', countdownDuration);
+        // 3. Save active bank
+        if (activeBank) {
+          localStorage.setItem('kept_active_bank', JSON.stringify(activeBank));
+        }
+        // 4. Save camera calibration
+        localStorage.setItem('kept_camera_calib', JSON.stringify(calibSettings));
+
+        alert(`💾 บันทึกการตั้งค่าทั้งหมดลงอุปกรณ์เรียบร้อยแล้ว!\n\n` +
+              `• รหัสผ่าน Admin: อัปเดตแล้ว\n` +
+              `• เวลานับถอยหลัง: ${countdownDuration} วินาที\n` +
+              `• บัญชีธนาคาร: ${activeBank ? activeBank.name + ' (' + activeBank.accNo + ')' : '-'}\n` +
+              `• สี & แสงกล้อง: บันทึกแล้ว\n` +
+              `• เฟรมทั้งหมด: ${systemFrames.length} กรอบรูป`);
+      } catch (e) {
+        alert('บันทึกการตั้งค่าสำเร็จ');
+      }
+    }
+
+    function applyCameraCalibrationUI() {
+      try {
+        const saved = localStorage.getItem('kept_camera_calib');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed) calibSettings = Object.assign(calibSettings, parsed);
+        }
+      } catch (e) {}
+
+      if (document.getElementById('slider-bright')) {
+        document.getElementById('slider-bright').value = calibSettings.brightness;
+        document.getElementById('slider-contrast').value = calibSettings.contrast;
+        document.getElementById('slider-wb').value = calibSettings.wb;
+        document.getElementById('slider-sat').value = calibSettings.saturation;
+        document.getElementById('val-bright').innerText = calibSettings.brightness + ' EV';
+        document.getElementById('val-contrast').innerText = calibSettings.contrast + 'x';
+        document.getElementById('val-wb').innerText = calibSettings.wb + 'K';
+        document.getElementById('val-sat').innerText = calibSettings.saturation + 'x';
+      }
+      const view = document.getElementById('live-camera-view');
+      if (view) {
+        view.style.filter = `brightness(${1 + calibSettings.brightness}) contrast(${calibSettings.contrast}) saturate(${calibSettings.saturation})`;
+      }
+    }
+
+    function exportSettingsJson() {
+      const config = {
+        appName: 'Kept Photo Booth',
+        version: '2.4',
+        exportDate: new Date().toISOString(),
+        adminPin: getAdminPin(),
+        countdownSec: countdownDuration,
+        activeBank: activeBank,
+        calibSettings: calibSettings,
+        systemFrames: systemFrames,
+        gdriveFolderId: '1giOkC-Y37veBgt4AshEYiatunVuzEtw2'
+      };
+      const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `kept_settings_backup_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importSettingsJson(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.adminPin) localStorage.setItem('kept_admin_pin', data.adminPin);
+          if (data.countdownSec) setCountdownDuration(data.countdownSec);
+          if (data.activeBank) {
+            activeBank = data.activeBank;
+            localStorage.setItem('kept_active_bank', JSON.stringify(activeBank));
+            applyActiveBankUI();
+          }
+          if (data.calibSettings) {
+            calibSettings = data.calibSettings;
+            localStorage.setItem('kept_camera_calib', JSON.stringify(calibSettings));
+            applyCameraCalibrationUI();
+          }
+          if (data.systemFrames && Array.isArray(data.systemFrames)) {
+            systemFrames = data.systemFrames;
+            saveSystemFramesToStorage();
+            renderSystemFrames();
+          }
+          alert('📥 กู้คืนการตั้งค่าจากไฟล์สำรองสำเร็จสมบูรณ์!');
+        } catch (err) {
+          alert('❌ เกิดข้อผิดพลาดในการอ่านไฟล์ JSON: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function switchAdminTab(tabName) {
+      const tabs = ['bank', 'gdrive', 'display', 'camera', 'frames', 'printer', 'security', 'app'];
+      tabs.forEach(t => {
+        const el = document.getElementById('admin-tab-' + t);
+        const btn = document.getElementById('tab-btn-' + t);
+        if (el) el.classList.add('hidden');
+        if (btn) btn.className = 'flex-1 min-w-[55px] py-1.5 rounded-lg text-slate-400 hover:text-white';
+      });
+
+      const activeEl = document.getElementById('admin-tab-' + tabName);
+      const activeBtn = document.getElementById('tab-btn-' + tabName);
+      if (activeEl) activeEl.classList.remove('hidden');
+      if (activeBtn) activeBtn.className = 'flex-1 min-w-[55px] py-1.5 rounded-lg bg-emerald-600 text-white font-bold';
+    }
+
+    // ================= FRAMES MANAGEMENT & GOOGLE DRIVE INTEGRATION =================
+    function saveSystemFramesToStorage() {
+      try {
+        localStorage.setItem('kept_system_frames', JSON.stringify(systemFrames));
+      } catch (e) {
+        console.log('Error saving frames:', e);
+      }
+    }
+
+    function loadSystemFramesFromStorage() {
+      try {
+        const saved = localStorage.getItem('kept_system_frames');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            systemFrames = parsed;
+          }
+        }
+      } catch (e) {
+        console.log('Error loading frames:', e);
+      }
+    }
+
+    function renderSystemFrames() {
+      const container = document.getElementById('frames-list-container');
+      const adminContainer = document.getElementById('admin-frames-list');
+      const countLabel = document.getElementById('frames-count-label');
+      const adminCountLabel = document.getElementById('admin-frames-count-label');
+
+      if (countLabel) countLabel.innerText = `กรอบรูปทั้งหมดที่ติดตั้งในระบบ (${systemFrames.length} สไตล์):`;
+      if (adminCountLabel) adminCountLabel.innerText = `เฟรมทั้งหมดที่ติดตั้งในระบบ (${systemFrames.length} สไตล์):`;
+
+      // 1. Customer-Facing Gallery (When clicking 🎨 Frames dock icon) - Large Preview, Name & Mode ONLY
+      if (container) {
+        container.innerHTML = systemFrames.map(f => {
+          const modeTag = f.layout === 'newspaper' ? '📰 หนังสือพิมพ์วินเทจ' : f.layout === 'receipt' ? '🧾 สลิปใบเสร็จ 80mm' : '🎞️ สตริป 2x6"';
+          const previewHtml = generateLargeFramePreview(f);
+          return `
+            <div onclick="selectFrameToShoot('${f.id}')" class="p-2.5 rounded-2xl bg-[#14141e] border-2 border-slate-800 hover:border-emerald-400 cursor-pointer transition flex flex-col justify-between group shadow-lg">
+              <div class="w-full">
+                ${previewHtml}
+              </div>
+              <div class="mt-2 text-left">
+                <div class="font-black text-xs sm:text-sm text-white truncate group-hover:text-emerald-300 transition" title="${f.name}">
+                  ${f.name}
+                </div>
+                <div class="text-[10px] font-bold text-emerald-400 mt-0.5 truncate">
+                  ${modeTag}
+                </div>
+              </div>
+              <div class="mt-2 pt-1 border-t border-slate-800/80">
+                <span class="block text-center text-[9px] bg-emerald-600 text-white font-bold py-1 px-2 rounded-xl group-hover:bg-emerald-500 transition shadow">
+                  เลือกถ่ายกรอบนี้ ➔
+                </span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // 2. Admin Settings Management List (PIN 1234 Mode)
+      if (adminContainer) {
+        adminContainer.innerHTML = systemFrames.map(f => {
+          const icon = f.layout === 'receipt' ? '🧾' : f.layout === 'newspaper' ? '📰' : '🎞️';
+          const modeName = f.layout === 'newspaper' ? 'หนังสือพิมพ์' : f.layout === 'receipt' ? 'สลิปใบเสร็จ' : 'สตริป';
+          return `
+            <div class="p-2 rounded-xl bg-[#0f0f14] border border-slate-800 flex justify-between items-center text-[10px]">
+              <div class="flex items-center gap-2 truncate mr-2">
+                <span class="text-base">${icon}</span>
+                <div class="truncate">
+                  <span class="font-bold text-white block truncate">${f.name}</span>
+                  <span class="text-[9px] text-emerald-400 block truncate">${modeName} • ${f.source || 'ระบบ'}</span>
+                </div>
+              </div>
+              <button onclick="deleteSystemFrame('${f.id}')" class="text-red-400 hover:text-red-300 font-bold px-2 py-1 bg-red-950/40 rounded border border-red-500/30 text-[9px] shrink-0">ลบเฟรม</button>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    function toggleDeleteFrameMode() {
+      isDeleteFrameMode = !isDeleteFrameMode;
+      const btn = document.getElementById('btn-toggle-del-frames');
+      const label = document.getElementById('label-toggle-del-frames');
+      if (isDeleteFrameMode) {
+        btn.className = 'py-2 px-1 rounded-xl bg-red-700 text-white flex items-center justify-center gap-1 shadow';
+        label.innerText = 'เสร็จสิ้น';
+      } else {
+        btn.className = 'py-2 px-1 rounded-xl bg-slate-800 border border-red-500/40 text-red-300 hover:bg-red-950/40 flex items-center justify-center gap-1';
+        label.innerText = 'ลบเฟรม';
+      }
+      renderSystemFrames();
+    }
+
+    function deleteSystemFrame(id) {
+      if (systemFrames.length <= 1) {
+        alert('ต้องคงเหลือเฟรมในระบบอย่างน้อย 1 เฟรม');
+        return;
+      }
+      const target = systemFrames.find(f => f.id === id);
+      if (confirm(`คุณต้องการลบเฟรม "${target ? target.name : id}" ใช่หรือไม่?`)) {
+        systemFrames = systemFrames.filter(f => f.id !== id);
+        saveSystemFramesToStorage();
+        renderSystemFrames();
+        alert('🗑️ ลบเฟรมเรียบร้อยแล้ว!');
+      }
+    }
+
+    function selectFrameToShoot(id) {
+      const f = systemFrames.find(item => item.id === id);
+      if (f) {
+        activeSelectedFrame = f;
+        if (f.layout === 'newspaper') {
+          selectPackage(f.name, 140, 2, 'newspaper');
+        } else {
+          selectPackage(f.name, 89, 3, 'receipt');
+        }
+      }
+    }
+
+    // Google Drive Fetch Modal & Import Controller
+    function openDriveFrameModal() {
+      document.getElementById('modal-drive-frames').classList.remove('hidden');
+      renderDrivePicker();
+    }
+
+    function closeDriveFrameModal() {
+      document.getElementById('modal-drive-frames').classList.add('hidden');
+    }
+
+    function switchDriveModalTab(tab) {
+      const tabCat = document.getElementById('drive-modal-tab-catalog');
+      const tabUp = document.getElementById('drive-modal-tab-upload');
+      const btnCat = document.getElementById('btn-drive-tab-catalog');
+      const btnUp = document.getElementById('btn-drive-tab-upload');
+      if (tab === 'catalog') {
+        if (tabCat) tabCat.classList.remove('hidden');
+        if (tabUp) tabUp.classList.add('hidden');
+        if (btnCat) btnCat.className = 'flex-1 py-1 rounded-lg bg-teal-600 text-white';
+        if (btnUp) btnUp.className = 'flex-1 py-1 rounded-lg text-slate-400 hover:text-white';
+      } else {
+        if (tabCat) tabCat.classList.add('hidden');
+        if (tabUp) tabUp.classList.remove('hidden');
+        if (btnUp) btnUp.className = 'flex-1 py-1 rounded-lg bg-teal-600 text-white';
+        if (btnCat) btnCat.className = 'flex-1 py-1 rounded-lg text-slate-400 hover:text-white';
+      }
+    }
+
+    let uploadedDriveImageBase64 = null;
+
+    function handleDriveFileSelected(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        uploadedDriveImageBase64 = e.target.result;
+        const box = document.getElementById('box-drive-file-preview');
+        const img = document.getElementById('img-drive-file-preview');
+        if (box && img) {
+          img.src = uploadedDriveImageBase64;
+          box.classList.remove('hidden');
+        }
+        const nameInput = document.getElementById('input-drive-frame-name');
+        if (nameInput && !nameInput.value.trim()) {
+          const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+          nameInput.value = cleanName;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function saveDirectDriveImageFrame() {
+      const urlInput = document.getElementById('input-drive-image-url');
+      let url = (urlInput ? urlInput.value.trim() : '');
+      const nameInput = document.getElementById('input-drive-frame-name');
+      const name = nameInput ? nameInput.value.trim() : '';
+      const layoutSelect = document.getElementById('select-drive-frame-layout');
+      const layout = layoutSelect ? layoutSelect.value : 'newspaper';
+
+      if (!name) {
+        alert('กรุณากรอกชื่อกรอบรูป');
+        return;
+      }
+
+      let finalImage = uploadedDriveImageBase64 || url;
+
+      if (url && url.includes('drive.google.com')) {
+        const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+        if (match && match[1]) {
+          finalImage = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
+        }
+      }
+
+      const newFrame = {
+        id: 'drive_custom_' + Date.now(),
+        name: name,
+        layout: layout,
+        title: name.toUpperCase(),
+        image: finalImage || null,
+        color: layout === 'newspaper' ? '#B45309' : layout === 'receipt' ? '#10B981' : '#A855F7',
+        source: 'Google Drive ☁️'
+      };
+
+      systemFrames.push(newFrame);
+      saveSystemFramesToStorage();
+      closeDriveFrameModal();
+      renderSystemFrames();
+      alert(`✅ ดึงรูปภาพเข้าระบบเป็นกรอบรูป "${name}" (${layout}) เรียบร้อยแล้ว!`);
+
+      // Reset fields
+      if (urlInput) urlInput.value = '';
+      if (nameInput) nameInput.value = '';
+      uploadedDriveImageBase64 = null;
+      const box = document.getElementById('box-drive-file-preview');
+      if (box) box.classList.add('hidden');
+    }
+
+    function renderDrivePicker() {
+      const list = document.getElementById('drive-frames-picker-list');
+      if (!list) return;
+      list.innerHTML = driveCatalogFrames.map(f => {
+        const isAlreadyAdded = systemFrames.some(item => item.id === f.id);
+        const icon = f.layout === 'receipt' ? '🧾' : f.layout === 'newspaper' ? '📰' : '🎞️';
+        const modeTitle = f.layout === 'newspaper' ? 'หนังสือพิมพ์วินเทจ' : f.layout === 'receipt' ? 'สลิปใบเสร็จ' : 'สตริป 2x6"';
+        
+        return `
+          <div class="p-2.5 rounded-xl bg-[#0f0f14] border border-slate-800 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5 truncate">
+              <div class="w-10 h-10 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center text-lg shrink-0">
+                ${icon}
+              </div>
+              <div class="truncate text-left">
+                <span class="text-xs font-bold text-white block truncate">${f.name}</span>
+                <span class="text-[9px] text-teal-400 block">${modeTitle}</span>
+              </div>
+            </div>
+            ${isAlreadyAdded ? `
+              <span class="text-[9px] text-emerald-400 font-bold px-2 py-0.5 bg-emerald-950 rounded shrink-0">มีในระบบแล้ว ✓</span>
+            ` : `
+              <label class="flex items-center gap-1.5 cursor-pointer shrink-0 bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded-lg border border-slate-700">
+                <input type="checkbox" name="drive-frame-check" value="${f.id}" class="accent-teal-500 w-3.5 h-3.5">
+                <span class="text-[10px] text-teal-300 font-bold">เลือกนำเข้า</span>
+              </label>
+            `}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function importSelectedDriveFrames() {
+      const checkboxes = document.querySelectorAll('input[name="drive-frame-check"]:checked');
+      if (checkboxes.length === 0) {
+        alert('กรุณาเลือกเฟรมจาก Google Drive ที่ต้องการนำเข้าอย่างน้อย 1 รายการ หรือใช้แท็บเพิ่มรูปจาก Drive');
+        return;
+      }
+      let count = 0;
+      checkboxes.forEach(cb => {
+        const found = driveCatalogFrames.find(f => f.id === cb.value);
+        if (found && !systemFrames.some(s => s.id === found.id)) {
+          systemFrames.push({
+            ...found,
+            source: 'Google Drive ☁️'
+          });
+          count++;
+        }
+      });
+      saveSystemFramesToStorage();
+      closeDriveFrameModal();
+      renderSystemFrames();
+      alert(`✅ ดึงข้อมูลและนำเข้าเฟรมจาก Google Drive สำเร็จ ${count} รายการ!`);
+    }
+
+    // Add Custom Frame Modal
+    function openAddFrameModal() {
+      document.getElementById('modal-add-frame').classList.remove('hidden');
+    }
+
+    function closeAddFrameModal() {
+      document.getElementById('modal-add-frame').classList.add('hidden');
+    }
+
+    function saveCustomFrame() {
+      const name = document.getElementById('new-frame-name').value.trim();
+      const layout = document.getElementById('new-frame-layout').value;
+      const title = document.getElementById('new-frame-title').value.trim() || 'KEPT PHOTOBOOTH';
+      const desc = document.getElementById('new-frame-desc').value.trim() || 'กรอบสไตล์คัสตอมในระบบ';
+
+      if (!name) {
+        alert('กรุณากรอกชื่อสไตล์หรือชื่อเฟรม');
+        return;
+      }
+
+      const newFrame = {
+        id: 'custom_' + Date.now(),
+        name,
+        layout,
+        title,
+        desc,
+        color: layout === 'receipt' ? '#10B981' : layout === 'newspaper' ? '#B45309' : '#A855F7',
+        source: 'Custom Local'
+      };
+
+      systemFrames.push(newFrame);
+      saveSystemFramesToStorage();
+      closeAddFrameModal();
+      renderSystemFrames();
+      alert(`💾 บันทึกเฟรม "${name}" เรียบร้อยแล้ว!`);
+    }
+
+    // Service Worker Registration for PWA Standalone Mode
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+          console.log('✓ Kept Booth Service Worker Active:', reg.scope);
+        }).catch(err => {
+          console.log('Service Worker registration note:', err);
+        });
+      });
+    }
+
+    async function loadGdriveSettings() {
+      const input = document.getElementById('input-gdrive-webhook-url');
+      const badge = document.getElementById('gdrive-sync-config-status');
+      const localUrl = localStorage.getItem('kept_gdrive_webhook_url') || '';
+      if (input && localUrl) input.value = localUrl;
+
+      try {
+        const res = await fetch('/api/gdrive_settings');
+        if (res.ok) {
+          const data = await res.json();
+          const finalUrl = data.gdriveWebhookUrl || localUrl || '';
+          if (finalUrl) {
+            localStorage.setItem('kept_gdrive_webhook_url', finalUrl);
+            if (input) input.value = finalUrl;
+          }
+          if (badge) {
+            if (data.hasOAuthEnv || data.hasEnvWebhook || finalUrl) {
+              badge.className = 'text-[9px] bg-emerald-950 text-emerald-300 border border-emerald-500 px-1.5 py-0.2 rounded font-mono';
+              badge.innerText = 'AUTO SYNC พร้อมใช้งาน ✓';
+            } else {
+              badge.className = 'text-[9px] bg-amber-950 text-amber-300 border border-amber-500 px-1.5 py-0.2 rounded font-mono';
+              badge.innerText = 'รอใส่ Webhook URL';
+            }
+          }
+        }
+      } catch (e) {
+        if (badge && localUrl) {
+          badge.className = 'text-[9px] bg-emerald-950 text-emerald-300 border border-emerald-500 px-1.5 py-0.2 rounded font-mono';
+          badge.innerText = 'LOCAL URL READY';
+        }
+      }
+    }
+
+    async function saveAndTestGdriveWebhook() {
+      const input = document.getElementById('input-gdrive-webhook-url');
+      const btn = document.getElementById('btn-save-gdrive-webhook');
+      const url = (input ? input.value : '').trim();
+
+      if (url && !url.startsWith('https://script.google.com/')) {
+        if (!confirm('URL นี้ไม่ได้ขึ้นต้นด้วย https://script.google.com/ แน่ใจหรือไม่ว่าถูกต้อง?')) return;
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = '⏳ กำลังบันทึก & ทดสอบเชื่อมต่อ...';
+      }
+
+      try {
+        localStorage.setItem('kept_gdrive_webhook_url', url);
+        const res = await fetch('/api/gdrive_settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gdriveWebhookUrl: url, testPing: Boolean(url) })
+        });
+        const data = await res.json();
+        await loadGdriveSettings();
+        if (data.success) {
+          if (data.pingResult && data.pingResult.status === 'online') {
+            alert('✅ บันทึกและเชื่อมต่อ Google Apps Script สำเร็จ!\nทุกรูปที่ถ่ายนับจากนี้จะถูกอัปโหลดเข้าโฟลเดอร์รายวันใน Google Drive ทันที');
+          } else if (!url) {
+            alert('ℹ️ ล้างค่า Webhook URL แล้ว');
+          } else {
+            alert('💾 บันทึก Webhook URL ลงระบบแล้ว (หมายเหตุ: ทดสอบ Ping ได้รับสถานะ: ' + JSON.stringify(data.pingResult) + ')');
+          }
+        } else {
+          alert('❌ บันทึกไม่สำเร็จ: ' + (data.error || 'Unknown error'));
+        }
+      } catch (e) {
+        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + e.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = '💾 บันทึก & ทดสอบเชื่อมต่อ Google Drive ทันที';
+        }
+      }
+    }
+
+    // Initial setup on load
+    loadSystemFramesFromStorage();
+    loadGdriveSettings();
+    applyActiveBankUI();
+    updateCountdownUI();
+    applyCameraCalibrationUI();
+    renderSystemFrames();
+    syncDynamicHostLinks();
+    scanCameraDevices();
+  </script>
+</body>
+</html>

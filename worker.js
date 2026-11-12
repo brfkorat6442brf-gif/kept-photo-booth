@@ -55,6 +55,216 @@ async function ensureD1Tables(db) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `).run();
+
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+}
+
+async function getD1Setting(db, key) {
+  if (!db) return '';
+  try {
+    await ensureD1Tables(db);
+    const row = await db.prepare('SELECT value FROM settings WHERE key = ? LIMIT 1').bind(key).first();
+    return row && row.value ? String(row.value) : '';
+  } catch (e) {
+    return '';
+  }
+}
+
+async function setD1Setting(db, key, value) {
+  if (!db) return false;
+  await ensureD1Tables(db);
+  await db.prepare(`
+    INSERT INTO settings (key, value, updated_at)
+    VALUES (?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(key) DO UPDATE SET
+      value = excluded.value,
+      updated_at = CURRENT_TIMESTAMP
+  `).bind(key, String(value || '')).run();
+  return true;
+}
+
+function decodeDataUrlBytes(dataUrlOrBase64, defaultMime = 'application/octet-stream') {
+  if (!dataUrlOrBase64 || typeof dataUrlOrBase64 !== 'string') return null;
+  let mimeType = defaultMime;
+  let b64 = dataUrlOrBase64.trim();
+  const match = b64.match(/^data:([^;]+);base64,(.+)$/);
+  if (match) {
+    mimeType = match[1];
+    b64 = match[2];
+  }
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { mimeType, bytes };
+}
+
+async function getOAuthAccessToken(env) {
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: env.GDRIVE_CLIENT_ID,
+      client_secret: env.GDRIVE_CLIENT_SECRET,
+      refresh_token: env.GDRIVE_REFRESH_TOKEN,
+      grant_type: 'refresh_token',
+    }),
+  });
+  const json = await res.json();
+  if (!res.ok || !json.access_token) {
+    throw new Error(json.error_description || json.error || 'OAuth token exchange failed');
+  }
+  return json.access_token;
+}
+
+async function findOrCreateDriveFolder(accessToken, parentId, folderName) {
+  const safeName = folderName.replace(/'/g, "\\'");
+  const q = encodeURIComponent(`'${parentId}' in parents and name='${safeName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,webViewLink)&supportsAllDrives=true&includeItemsFromAllDrives=true`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const searchJson = await searchRes.json();
+  if (searchJson.files && searchJson.files.length > 0) {
+    return searchJson.files[0];
+  }
+
+  const createRes = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name,webViewLink&supportsAllDrives=true', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      name: folderName,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [parentId],
+    }),
+  });
+  const created = await createRes.json();
+  if (!createRes.ok || !created.id) {
+    throw new Error((created.error && created.error.message) || 'Failed to create Drive folder');
+  }
+  return created;
+}
+
+async function uploadMultipartToDrive(accessToken, folderId, filename, dataUrl, defaultMime) {
+  const decoded = decodeDataUrlBytes(dataUrl, defaultMime);
+  if (!decoded) return null;
+
+  const boundary = 'kept_drive_boundary_' + Math.random().toString(36).slice(2);
+  const metadataPart = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ name: filename, parents: [folderId] })}\r\n--${boundary}\r\nContent-Type: ${decoded.mimeType}\r\n\r\n`;
+  const closingPart = `\r\n--${boundary}--`;
+
+  const enc = new TextEncoder();
+  const headBytes = enc.encode(metadataPart);
+  const tailBytes = enc.encode(closingPart);
+  const body = new Uint8Array(headBytes.length + decoded.bytes.length + tailBytes.length);
+  body.set(headBytes, 0);
+  body.set(decoded.bytes, headBytes.length);
+  body.set(tailBytes, headBytes.length + decoded.bytes.length);
+
+  const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink&supportsAllDrives=true', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': `multipart/related; boundary=${boundary}`,
+    },
+    body,
+  });
+  const uploadJson = await uploadRes.json();
+  if (!uploadRes.ok || !uploadJson.id) {
+    throw new Error((uploadJson.error && uploadJson.error.message) || `Drive upload failed for ${filename}`);
+  }
+  return uploadJson.webViewLink || `https://drive.google.com/file/d/${uploadJson.id}/view`;
+}
+
+async function uploadOrderToGoogleDrive({ orderId, dateFolder, gdriveFolderId, printJpg, animatedGif, shots, gdriveWebhookUrl }, env) {
+  // Method 1: OAuth2 Direct Google Drive API v3 (if env secrets configured)
+  if (env.GDRIVE_CLIENT_ID && env.GDRIVE_CLIENT_SECRET && env.GDRIVE_REFRESH_TOKEN) {
+    try {
+      const accessToken = await getOAuthAccessToken(env);
+      const dailyFolder = await findOrCreateDriveFolder(accessToken, gdriveFolderId, dateFolder);
+      const jpgUrl = printJpg ? await uploadMultipartToDrive(accessToken, dailyFolder.id, `Kept_${orderId}_Framed.jpg`, printJpg, 'image/jpeg') : null;
+      const gifUrl = animatedGif ? await uploadMultipartToDrive(accessToken, dailyFolder.id, `Kept_${orderId}_Framed.gif`, animatedGif, 'image/gif') : null;
+      if (Array.isArray(shots)) {
+        for (let i = 0; i < shots.length; i++) {
+          if (shots[i]) {
+            await uploadMultipartToDrive(accessToken, dailyFolder.id, `Kept_${orderId}_Shot_${i + 1}.jpg`, shots[i], 'image/jpeg');
+          }
+        }
+      }
+      return {
+        synced: Boolean(jpgUrl || gifUrl),
+        method: 'oauth2_drive_api',
+        dailyFolderUrl: dailyFolder.webViewLink || `https://drive.google.com/drive/folders/${dailyFolder.id}`,
+        jpgUrl,
+        gifUrl,
+        error: null,
+      };
+    } catch (err) {
+      return { synced: false, method: 'oauth2_drive_api', error: err.message };
+    }
+  }
+
+  // Method 2: Google Apps Script Web App Webhook (saved in env or D1 settings or request)
+  const storedWebhook = await getD1Setting(env.DB, 'gdrive_webhook_url');
+  const webhookUrl = (env.GDRIVE_WEBHOOK_URL || storedWebhook || gdriveWebhookUrl || '').trim();
+  if (!webhookUrl) {
+    return {
+      synced: false,
+      method: 'unconfigured',
+      error: 'ยังไม่ได้ตั้งค่า Google Apps Script Web App URL ในหน้า Admin -> Drive',
+    };
+  }
+
+  try {
+    const res = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        orderId,
+        dateFolder,
+        folderId: gdriveFolderId,
+        printJpg,
+        animatedGif,
+        shots: Array.isArray(shots) ? shots : [],
+      }),
+      redirect: 'follow',
+    });
+    const text = await res.text();
+    let parsed = null;
+    try {
+      parsed = JSON.parse(text);
+    } catch (_) {}
+
+    if (parsed && parsed.success) {
+      return {
+        synced: true,
+        method: 'apps_script_webhook',
+        dailyFolderUrl: parsed.dailyFolderUrl || `https://drive.google.com/drive/folders/${gdriveFolderId}`,
+        jpgUrl: parsed.jpgUrl || null,
+        gifUrl: parsed.gifUrl || null,
+        error: null,
+      };
+    }
+
+    return {
+      synced: false,
+      method: 'apps_script_webhook',
+      error: (parsed && parsed.error) || `Webhook HTTP ${res.status}`,
+    };
+  } catch (err) {
+    return {
+      synced: false,
+      method: 'apps_script_webhook',
+      error: err.message,
+    };
+  }
 }
 
 export default {
@@ -138,6 +348,17 @@ export default {
           }
         }
 
+        // 3. Upload framed JPG, GIF, and individual shots to Google Drive (daily subfolder)
+        const googleDriveResult = await uploadOrderToGoogleDrive({
+          orderId,
+          dateFolder,
+          gdriveFolderId,
+          printJpg,
+          animatedGif,
+          shots: data.shots,
+          gdriveWebhookUrl: data.gdriveWebhookUrl,
+        }, env);
+
         return jsonResponse({
           success: true,
           orderId,
@@ -147,9 +368,12 @@ export default {
             d1_database: d1Saved,
             kv_storage: kvSaved,
             d1_error: d1Error,
+            google_drive: googleDriveResult,
             status: (d1Saved || kvSaved) ? 'Saved to Cloudflare Cloud' : 'Waiting for D1 Binding (DB)',
           },
-          message: '✓ บันทึกข้อมูลออเดอร์ลงระบบ Cloudflare สำเร็จเรียบร้อย',
+          message: googleDriveResult.synced
+            ? '✓ บันทึกออเดอร์ลง Cloudflare และอัปโหลดเข้า Google Drive เรียบร้อย'
+            : '✓ บันทึกออเดอร์ลง Cloudflare สำเร็จ (รอตั้งค่า Google Drive Sync)',
         });
       } catch (err) {
         return jsonResponse({ success: false, error: err.message }, 400);
@@ -251,6 +475,7 @@ export default {
 
     // ================= API ROUTE 4: GET /api/sync_stats =================
     if (pathname === '/api/sync_stats' && request.method === 'GET') {
+      const savedWebhook = await getD1Setting(env.DB, 'gdrive_webhook_url');
       const status = {
         status: 'online',
         platform: 'Cloudflare Workers + Static Assets & D1',
@@ -260,6 +485,8 @@ export default {
         today_orders: 0,
         latest_order: null,
         gdrive_target_folder: '1giOkC-Y37veBgt4AshEYiatunVuzEtw2',
+        gdrive_webhook_configured: Boolean(env.GDRIVE_WEBHOOK_URL || savedWebhook),
+        gdrive_oauth_configured: Boolean(env.GDRIVE_CLIENT_ID && env.GDRIVE_CLIENT_SECRET && env.GDRIVE_REFRESH_TOKEN),
       };
 
       if (env.DB) {
@@ -280,6 +507,48 @@ export default {
       }
 
       return jsonResponse(status);
+    }
+
+    // ================= API ROUTE 4B: GET/POST /api/gdrive_settings =================
+    if (pathname === '/api/gdrive_settings' && request.method === 'GET') {
+      const storedWebhook = await getD1Setting(env.DB, 'gdrive_webhook_url');
+      return jsonResponse({
+        success: true,
+        gdriveFolderId: '1giOkC-Y37veBgt4AshEYiatunVuzEtw2',
+        gdriveWebhookUrl: storedWebhook || '',
+        hasEnvWebhook: Boolean(env.GDRIVE_WEBHOOK_URL),
+        hasOAuthEnv: Boolean(env.GDRIVE_CLIENT_ID && env.GDRIVE_CLIENT_SECRET && env.GDRIVE_REFRESH_TOKEN),
+      });
+    }
+
+    if (pathname === '/api/gdrive_settings' && request.method === 'POST') {
+      try {
+        const body = await request.json();
+        const webhookUrl = String(body.gdriveWebhookUrl || '').trim();
+        if (webhookUrl && !webhookUrl.startsWith('https://')) {
+          return jsonResponse({ success: false, error: 'Webhook URL ต้องขึ้นต้นด้วย https://' }, 400);
+        }
+        await setD1Setting(env.DB, 'gdrive_webhook_url', webhookUrl);
+
+        let pingResult = null;
+        if (webhookUrl && body.testPing) {
+          try {
+            const pingRes = await fetch(webhookUrl, { method: 'GET', redirect: 'follow' });
+            const pingText = await pingRes.text();
+            pingResult = JSON.parse(pingText);
+          } catch (e) {
+            pingResult = { status: 'error', error: e.message };
+          }
+        }
+
+        return jsonResponse({
+          success: true,
+          gdriveWebhookUrl: webhookUrl,
+          pingResult,
+        });
+      } catch (err) {
+        return jsonResponse({ success: false, error: err.message }, 400);
+      }
     }
 
     // ================= API ROUTE 5: GET /api/get_remote_frame =================

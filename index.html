@@ -593,13 +593,13 @@
               <span class="flex items-center gap-1 text-teal-300">
                 <span>☁️</span><span>บันทึกลง Google Drive:</span>
               </span>
-              <span class="text-emerald-400 font-bold">✓ ซิงค์เรียบร้อย</span>
+              <span id="final-drive-sync-badge" class="text-amber-300 font-bold">⏳ กำลังตรวจสอบ...</span>
             </div>
             <div class="flex items-center justify-between bg-black/40 px-2 py-0.5 rounded text-[8px] font-mono border border-teal-500/20">
               <span class="text-slate-400">📅 โฟลเดอร์ประจำวัน:</span>
-              <span id="final-daily-folder-tag" class="text-white font-bold">2026-11-10</span>
+              <span id="final-daily-folder-tag" class="text-white font-bold">2026-11-12</span>
             </div>
-            <a href="https://drive.google.com/drive/folders/1giOkC-Y37veBgt4AshEYiatunVuzEtw2?usp=sharing" target="_blank" class="block text-center py-1 bg-teal-800 hover:bg-teal-700 text-white rounded-lg font-bold text-[9px] transition">
+            <a id="final-drive-folder-link" href="https://drive.google.com/drive/folders/1giOkC-Y37veBgt4AshEYiatunVuzEtw2?usp=sharing" target="_blank" class="block text-center py-1 bg-teal-800 hover:bg-teal-700 text-white rounded-lg font-bold text-[9px] transition">
               📂 เปิดดูไฟล์ใน Google Drive
             </a>
           </div>
@@ -806,13 +806,27 @@
           <div id="admin-tab-gdrive" class="hidden space-y-2.5">
             <div class="p-3 rounded-xl bg-[#0f0f14] border border-emerald-500/40">
               <div class="flex items-center justify-between mb-1">
-                <span class="text-emerald-400 font-bold text-[11px]">☁️ โฟลเดอร์ Google Drive เชื่อมต่อแล้ว</span>
-                <span class="text-[9px] bg-emerald-950 text-emerald-300 border border-emerald-500 px-1.5 py-0.2 rounded font-mono">2-WAY SYNC</span>
+                <span class="text-emerald-400 font-bold text-[11px]">☁️ โฟลเดอร์ Google Drive ปลายทาง</span>
+                <span id="gdrive-sync-config-status" class="text-[9px] bg-amber-950 text-amber-300 border border-amber-500 px-1.5 py-0.2 rounded font-mono">รอใส่ Webhook URL</span>
               </div>
               <span class="text-slate-400 text-[10px] block mb-1">ID: 1giOkC-Y37veBgt4AshEYiatunVuzEtw2</span>
               <div class="p-2 bg-[#181824] rounded border border-slate-700 text-[9px] break-all font-mono text-cyan-400">
                 https://drive.google.com/drive/folders/1giOkC-Y37veBgt4AshEYiatunVuzEtw2
               </div>
+            </div>
+
+            <!-- Google Apps Script Webhook URL Config -->
+            <div class="p-3 rounded-xl bg-amber-950/20 border border-amber-500/40 space-y-1.5">
+              <label class="text-amber-300 font-bold text-[10px] block">
+                🔗 Google Apps Script Web App URL (สำหรับอัปโหลดรูปเข้า Drive อัตโนมัติ):
+              </label>
+              <input id="input-gdrive-webhook-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-[#181824] border border-slate-700 rounded-lg p-2 text-[10px] text-white font-mono focus:outline-none focus:border-emerald-500" />
+              <p class="text-[9px] text-slate-400 leading-tight">
+                นำ URL ที่ Deploy จากไฟล์ <code>google_apps_script_drive_sync.gs</code> มาวางที่นี่ครั้งเดียว ระบบจะบันทึกลงฐานข้อมูลกลาง (Cloudflare D1) เพื่อให้อัปโหลดรูป .JPG / .GIF เข้ารายวันโดยอัตโนมัติทุกเครื่อง
+              </p>
+              <button onclick="saveAndTestGdriveWebhook()" id="btn-save-gdrive-webhook" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs transition">
+                💾 บันทึก & ทดสอบเชื่อมต่อ Google Drive ทันที
+              </button>
             </div>
 
             <!-- Daily Folder Structure Status -->
@@ -821,26 +835,12 @@
                 <span class="text-teal-300 font-bold flex items-center gap-1">
                   <span>📅</span><span>ระบบสร้างโฟลเดอร์แยกประจำวัน:</span>
                 </span>
-                <span class="text-[9px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded font-mono font-bold">เปิดใช้งาน ✓</span>
+                <span class="text-[9px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded font-mono font-bold">YYYY-MM-DD</span>
               </div>
               <p class="text-[9px] text-slate-300 leading-tight">
-                ทุกครั้งที่ถ่ายเสร็จ ระบบจะสร้างโฟลเดอร์ตามวันที่ (เช่น <code>2026-11-10</code>) ใน Google Drive เพื่อจัดเก็บรูป .JPG และ .GIF แยกเป็นระเบียบในแต่ละวัน
+                ทุกครั้งที่ถ่ายเสร็จ ระบบจะสร้างโฟลเดอร์ตามวันที่ (เช่น <code>2026-11-12</code>) ใน Google Drive เพื่อจัดเก็บรูป .JPG, .GIF และช็อตเดี่ยวแยกเป็นระเบียบในแต่ละวัน
               </p>
             </div>
-
-            <div class="p-2.5 rounded-xl bg-[#0f0f14] border border-slate-800 space-y-1">
-              <span class="text-white font-bold text-[10px] block">📁 โครงสร้างโฟลเดอร์ใน Drive:</span>
-              <div class="text-[9px] space-y-1 text-slate-300">
-                <div class="flex justify-between bg-[#181824] p-1 rounded"><span><b class="text-emerald-400">/YYYY-MM-DD</b> : โฟลเดอร์แยกตามวัน</span><span class="text-emerald-400">✓ Auto Daily</span></div>
-                <div class="flex justify-between bg-[#181824] p-1 rounded"><span><b class="text-purple-400">/frames</b> : PNG กรอบรูปที่ติดตั้ง</span><span class="text-purple-400">✓ Sync</span></div>
-                <div class="flex justify-between bg-[#181824] p-1 rounded"><span><b class="text-cyan-400">/sessions</b> : รูปถ่ายลูกค้าสำรอง</span><span class="text-cyan-400">✓ QR Download</span></div>
-                <div class="flex justify-between bg-[#181824] p-1 rounded"><span><b class="text-amber-400">/reports</b> : รายงานยอดขายรายวัน</span><span class="text-amber-400">✓ Backup</span></div>
-              </div>
-            </div>
-
-            <button onclick="alert('🔄 ซิงค์ข้อมูลกับ Google Drive สำเร็จ 100%!');" class="w-full py-2 bg-emerald-600 text-white rounded font-bold text-xs">
-              🔄 ซิงค์ฐานข้อมูลจาก Google Drive ทันที
-            </button>
           </div>
 
           <!-- TAB: 🖥️ DISPLAY (IPAD / SMART TV) & OTG STABILITY -->
@@ -2811,18 +2811,56 @@
       localStorage.setItem('last_kept_order', JSON.stringify(currentOrderData));
 
       // 5. Send to Server & Export to Google Drive (with timeout safety)
+      const driveBadge = document.getElementById('final-drive-sync-badge');
+      const driveLink = document.getElementById('final-drive-folder-link');
+      if (driveBadge) {
+        driveBadge.className = 'text-amber-300 font-bold';
+        driveBadge.innerText = '⏳ กำลังอัปโหลดเข้า Drive...';
+      }
+
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
-        await fetch('/api/save_order', {
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
+        const savePayload = {
+          ...currentOrderData,
+          gdriveWebhookUrl: localStorage.getItem('kept_gdrive_webhook_url') || ''
+        };
+        const res = await fetch('/api/save_order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(currentOrderData),
+          body: JSON.stringify(savePayload),
           signal: controller.signal
         });
         clearTimeout(timeoutId);
-        console.log('✓ Order exported to Server & Google Drive folder:', dateFolder);
+        const resJson = await res.json().catch(() => null);
+        const driveInfo = resJson && resJson.storage && resJson.storage.google_drive;
+
+        if (driveInfo && driveInfo.synced) {
+          if (driveBadge) {
+            driveBadge.className = 'text-emerald-400 font-bold';
+            driveBadge.innerText = '✓ อัปโหลดเข้า Drive แล้ว';
+          }
+          if (driveLink && driveInfo.dailyFolderUrl) {
+            driveLink.href = driveInfo.dailyFolderUrl;
+          }
+        } else if (driveInfo && driveInfo.method === 'unconfigured') {
+          if (driveBadge) {
+            driveBadge.className = 'text-amber-300 font-bold';
+            driveBadge.innerText = '⚠️ รอตั้งค่า Drive Webhook';
+          }
+        } else {
+          if (driveBadge) {
+            driveBadge.className = 'text-rose-400 font-bold';
+            driveBadge.innerText = '⚠️ Drive ซิงค์ไม่สำเร็จ';
+          }
+          console.warn('Google Drive sync detail:', driveInfo);
+        }
+        console.log('✓ Order save response:', resJson);
       } catch (e) {
+        if (driveBadge) {
+          driveBadge.className = 'text-rose-400 font-bold';
+          driveBadge.innerText = '⚠️ หมดเวลาเชื่อมต่อ Drive';
+        }
         console.log('Server save note / timeout:', e);
       }
     }
@@ -3531,8 +3569,86 @@
       });
     }
 
+    async function loadGdriveSettings() {
+      const input = document.getElementById('input-gdrive-webhook-url');
+      const badge = document.getElementById('gdrive-sync-config-status');
+      const localUrl = localStorage.getItem('kept_gdrive_webhook_url') || '';
+      if (input && localUrl) input.value = localUrl;
+
+      try {
+        const res = await fetch('/api/gdrive_settings');
+        if (res.ok) {
+          const data = await res.json();
+          const finalUrl = data.gdriveWebhookUrl || localUrl || '';
+          if (finalUrl) {
+            localStorage.setItem('kept_gdrive_webhook_url', finalUrl);
+            if (input) input.value = finalUrl;
+          }
+          if (badge) {
+            if (data.hasOAuthEnv || data.hasEnvWebhook || finalUrl) {
+              badge.className = 'text-[9px] bg-emerald-950 text-emerald-300 border border-emerald-500 px-1.5 py-0.2 rounded font-mono';
+              badge.innerText = 'AUTO SYNC พร้อมใช้งาน ✓';
+            } else {
+              badge.className = 'text-[9px] bg-amber-950 text-amber-300 border border-amber-500 px-1.5 py-0.2 rounded font-mono';
+              badge.innerText = 'รอใส่ Webhook URL';
+            }
+          }
+        }
+      } catch (e) {
+        if (badge && localUrl) {
+          badge.className = 'text-[9px] bg-emerald-950 text-emerald-300 border border-emerald-500 px-1.5 py-0.2 rounded font-mono';
+          badge.innerText = 'LOCAL URL READY';
+        }
+      }
+    }
+
+    async function saveAndTestGdriveWebhook() {
+      const input = document.getElementById('input-gdrive-webhook-url');
+      const btn = document.getElementById('btn-save-gdrive-webhook');
+      const url = (input ? input.value : '').trim();
+
+      if (url && !url.startsWith('https://script.google.com/')) {
+        if (!confirm('URL นี้ไม่ได้ขึ้นต้นด้วย https://script.google.com/ แน่ใจหรือไม่ว่าถูกต้อง?')) return;
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = '⏳ กำลังบันทึก & ทดสอบเชื่อมต่อ...';
+      }
+
+      try {
+        localStorage.setItem('kept_gdrive_webhook_url', url);
+        const res = await fetch('/api/gdrive_settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gdriveWebhookUrl: url, testPing: Boolean(url) })
+        });
+        const data = await res.json();
+        await loadGdriveSettings();
+        if (data.success) {
+          if (data.pingResult && data.pingResult.status === 'online') {
+            alert('✅ บันทึกและเชื่อมต่อ Google Apps Script สำเร็จ!\nทุกรูปที่ถ่ายนับจากนี้จะถูกอัปโหลดเข้าโฟลเดอร์รายวันใน Google Drive ทันที');
+          } else if (!url) {
+            alert('ℹ️ ล้างค่า Webhook URL แล้ว');
+          } else {
+            alert('💾 บันทึก Webhook URL ลงระบบแล้ว (หมายเหตุ: ทดสอบ Ping ได้รับสถานะ: ' + JSON.stringify(data.pingResult) + ')');
+          }
+        } else {
+          alert('❌ บันทึกไม่สำเร็จ: ' + (data.error || 'Unknown error'));
+        }
+      } catch (e) {
+        alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + e.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = '💾 บันทึก & ทดสอบเชื่อมต่อ Google Drive ทันที';
+        }
+      }
+    }
+
     // Initial setup on load
     loadSystemFramesFromStorage();
+    loadGdriveSettings();
     applyActiveBankUI();
     updateCountdownUI();
     applyCameraCalibrationUI();
