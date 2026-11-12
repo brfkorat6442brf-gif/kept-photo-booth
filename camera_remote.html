@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Kept Remote Camera • เลนส์กล้องไร้สาย</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #060609; color: #F8FAFC; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-4 font-sans select-none">
+  
+  <!-- Header -->
+  <div class="flex items-center justify-between bg-[#12121a] p-3 rounded-2xl border border-slate-800">
+    <div class="flex items-center gap-2">
+      <span class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span>
+      <div>
+        <h1 class="text-xs font-black text-white tracking-wider">KEPT REMOTE CAMERA</h1>
+        <p class="text-[9px] text-slate-400 font-mono" id="connection-status">กำลังเชื่อมต่อไปยังตู้ iPad...</p>
+      </div>
+    </div>
+    <button onclick="switchCameraFacing()" class="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold border border-slate-700 flex items-center gap-1">
+      <span>🔄</span><span>สลับกล้อง</span>
+    </button>
+  </div>
+
+  <!-- Camera Viewfinder -->
+  <div class="relative flex-1 my-3 rounded-3xl overflow-hidden bg-black border-2 border-emerald-500/50 flex items-center justify-center shadow-2xl">
+    <video id="remote-video" autoplay playsinline muted class="w-full h-full object-cover"></video>
+    <canvas id="stream-canvas" class="hidden"></canvas>
+
+    <!-- Overlay Guidelines -->
+    <div class="absolute inset-4 border border-white/20 rounded-2xl pointer-events-none flex items-center justify-center">
+      <div class="w-12 h-12 border-t-2 border-l-2 border-emerald-400 absolute top-2 left-2"></div>
+      <div class="w-12 h-12 border-t-2 border-r-2 border-emerald-400 absolute top-2 right-2"></div>
+      <div class="w-12 h-12 border-b-2 border-l-2 border-emerald-400 absolute bottom-2 left-2"></div>
+      <div class="w-12 h-12 border-b-2 border-r-2 border-emerald-400 absolute bottom-2 right-2"></div>
+      <span class="text-[10px] text-white/50 bg-black/40 px-2 py-0.5 rounded font-mono">LIVE FEED TO BOOTH</span>
+    </div>
+
+    <div id="flash-overlay" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-200"></div>
+  </div>
+
+  <!-- Bottom Shutter & Controls -->
+  <div class="bg-[#12121a] p-3 rounded-2xl border border-slate-800 text-center space-y-2">
+    <div class="flex items-center justify-between text-[11px] text-slate-400 px-1 font-mono">
+      <span>FPS: <b class="text-emerald-400" id="fps-display">12</b></span>
+      <span class="text-cyan-400 font-bold" id="cam-mode-label">กล้องหลัง (Back Camera)</span>
+      <span>QUALITY: <b class="text-emerald-400">HD</b></span>
+    </div>
+
+    <button onclick="triggerFlashShutter()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-sm tracking-wider uppercase shadow-[0_0_25px_rgba(16,185,129,0.4)] flex items-center justify-center gap-2 active:scale-95 transition">
+      <span class="text-lg">📸</span>
+      <span>กดชัตเตอร์ส่งภาพเข้าตู้ Photo Booth</span>
+    </button>
+  </div>
+
+  <script>
+    let currentFacingMode = 'environment'; // environment = กล้องหลัง, user = กล้องหน้า
+    let videoStream = null;
+    let streamInterval = null;
+
+    async function initPhoneCamera() {
+      if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+      }
+
+      const video = document.getElementById('remote-video');
+      const status = document.getElementById('connection-status');
+      const label = document.getElementById('cam-mode-label');
+
+      try {
+        videoStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: currentFacingMode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        });
+
+        video.srcObject = videoStream;
+        status.innerText = '🟢 กำลังส่งภาพสดเข้าตู้ iPad...';
+        status.className = 'text-[9px] text-emerald-400 font-mono';
+        label.innerText = currentFacingMode === 'environment' ? 'กล้องหลัง (Back Camera)' : 'กล้องหน้า (Front Camera)';
+
+        startFrameBroadcaster();
+      } catch (err) {
+        console.error('Camera error:', err);
+        status.innerText = '❌ ไม่สามารถเข้าถึงกล้องได้: ' + err.message;
+        status.className = 'text-[9px] text-red-400 font-mono';
+      }
+    }
+
+    function switchCameraFacing() {
+      currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+      initPhoneCamera();
+    }
+
+    function startFrameBroadcaster() {
+      if (streamInterval) clearInterval(streamInterval);
+      
+      const video = document.getElementById('remote-video');
+      const canvas = document.getElementById('stream-canvas');
+      const ctx = canvas.getContext('2d');
+
+      // ส่งภาพเฟรม 8-10 เฟรมต่อวินาทีเข้าตู้ (รักษาอัตราส่วนภาพทั้งแนวตั้งและแนวนอน)
+      streamInterval = setInterval(() => {
+        if (video.videoWidth > 0) {
+          const aspect = video.videoWidth / video.videoHeight;
+          if (aspect >= 1) {
+            canvas.width = 640;
+            canvas.height = Math.round(640 / aspect);
+          } else {
+            canvas.height = 640;
+            canvas.width = Math.round(640 * aspect);
+          }
+
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const frameBase64 = canvas.toDataURL('image/jpeg', 0.65);
+
+          fetch('/api/upload_remote_frame', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: frameBase64 })
+          }).catch(e => console.log('Broadcast heartbeat:', e));
+        }
+      }, 120);
+    }
+
+    function triggerFlashShutter() {
+      const flash = document.getElementById('flash-overlay');
+      flash.classList.remove('opacity-0');
+      flash.classList.add('opacity-100');
+      setTimeout(() => {
+        flash.classList.remove('opacity-100');
+        flash.classList.add('opacity-0');
+      }, 200);
+
+      // ส่งเฟรมความละเอียดสูงพิเศษ 1 ครั้ง
+      const video = document.getElementById('remote-video');
+      const canvas = document.getElementById('stream-canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = 1280;
+      canvas.height = 720;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const hiResFrame = canvas.toDataURL('image/jpeg', 0.92);
+
+      fetch('/api/upload_remote_frame', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: hiResFrame, isShutter: true })
+      });
+    }
+
+    window.addEventListener('load', initPhoneCamera);
+  </script>
+</body>
+</html>
