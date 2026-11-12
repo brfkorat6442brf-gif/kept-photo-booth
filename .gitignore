@@ -22,6 +22,8 @@ build/
 .flutter-plugins
 .flutter-plugins-dependencies
 
-# Node
+# Node / Cloudflare Direct Upload staging
 node_modules/
 .wrangler/
+cloudflare_deploy/
+kept-photobooth-cloudflare.zip
